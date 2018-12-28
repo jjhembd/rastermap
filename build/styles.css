@@ -5,23 +5,33 @@ body {
   border: 0;
   margin: 20;
 }
-canvas {
-  background-color: #222222;
-  width: 1024px;
-  height: 512px;
+div.canvasLayers {
+  position: relative;
+  display: block;
+  margin: 0;
   padding: 0;
+}
+canvas {
+  width: 1024px;
+  height: 768px;
+  padding: 0;
+}
+#rasterCanvas {
+  background-color: #000099;
+  left: 0;
+  top: 0;
+  z-index: 0;
+}
+#vectorCanvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
 }
 #glOffScreen {
   display: block;
   visibility: hidden;
   z-index: 0;
-}
-#visibleCanvas {
-  display: block;
-  z-index: 2;
-}
-#qcCanvas {
-  display: block;
 }
 #coordinates {
   display: block;

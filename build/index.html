@@ -8,7 +8,23 @@
 
   <body onload="rasterMap.main()">
     <h1>Basic Raster Map Test</h1>
-    <canvas id="visibleCanvas"></canvas>
+
+    <p>
+      Enter longitude and latitude in degrees for a bounding box:<br>
+      <input type="text" id="west" placeholder="West Longitude">
+      <input type="text" id="east" placeholder="East Longitude">
+      <input type="text" id="north" placeholder="North Latitude">
+      <input type="text" id="south" placeholder="South Latitude">
+      <button id="bboxSet">Set Bounding Box</button>
+    </p>
+
+    <div class="canvasLayers">
+      <canvas id="rasterCanvas"></canvas>
+      <canvas id="vectorCanvas"></canvas>
+    </div>
+
+    <div id="coordinates"></div>
+
     <button id="up">Up</button>
     <button id="down">Down</button>
     <button id="left">Left</button>
@@ -17,7 +33,6 @@
     <button id="zoomOut">Zoom Out</button>
     <canvas id="glOffScreen"></canvas>
     <!--<canvas id="qcCanvas"></canvas>-->
-    <div id="coordinates"></div>
   </body>
 
 </html>
