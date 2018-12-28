@@ -31,7 +31,7 @@ function main() {
     var y1 = latToWebMercY( toRadians(northDeg.value) );
     var x2 = lonToWebMercX( toRadians(eastDeg.value) );
     var y2 = latToWebMercY( toRadians(southDeg.value) );
-    console.log("x1,y1  x2,y2 = " + x1 + "," + y1 + "  " + x2 + "," + y2);
+    //console.log("x1,y1  x2,y2 = " + x1 + "," + y1 + "  " + x2 + "," + y2);
     var bboxZXY = map.boundingBoxToZXY(x1, y1, x2, y2);
     if (!bboxZXY) {
       console.log("ERROR: Failed to define map containing this bounding box");

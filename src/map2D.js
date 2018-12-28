@@ -36,12 +36,12 @@ function initMap2D(rasterContext, vectorContext) {
 
     // Compute box width and height, with special handling for antimeridian
     var boxWidth = x2 - x1;
-    if (boxWidth < 0) boxwidth += 1.0; // Crossing antimeridian
+    if (boxWidth < 0) boxWidth += 1.0; // Crossing antimeridian
     if (boxWidth > 0.5) return false;  // x1 and x2 are flipped?
     var boxHeight = y2 - y1;
     if (boxHeight < 0) return false;
 
-    console.log("boundingBox: box width,height = " + boxWidth + "," + boxHeight);
+    //console.log("boundingBox: box width,height = " + boxWidth + "," + boxHeight);
 
     // Width/height of a tile: 1 / 2 ** zoom. Hence we need
     //  (numTiles? - 1) / 2 ** zoom > boxSize in both X and Y.
@@ -49,7 +49,7 @@ function initMap2D(rasterContext, vectorContext) {
     var zoomY = Math.log2( (numTilesY - 1) / boxHeight );
     var zoom = Math.floor( Math.min(zoomX, zoomY) );
 
-    console.log("boundingBox: zoom = " + zoom);
+    //console.log("boundingBox: zoom = " + zoom);
 
     var imax = 2 ** zoom; // Number of tiles at this zoom level
 
@@ -58,7 +58,7 @@ function initMap2D(rasterContext, vectorContext) {
     var centerX = (x1 + boxWidth / 2.0) * imax;
     if (centerX > imax) centerX -= imax;
     var centerY = 0.5 * (y1 + y2) * imax;
-    console.log("Box center X,Y = " + centerX + "," + centerY);
+    //console.log("Box center X,Y = " + centerX + "," + centerY);
 
     // 3. Find the integer tile numbers of the top left corner of the rectangle
     //    whose center will be within 1/2 tile of (centerX, centerY)
@@ -100,7 +100,7 @@ function initMap2D(rasterContext, vectorContext) {
         images[iy][ix] = new Image();
         var x = wrap(x0 + ix, imax);
         var zxyString = "/" + zoom + "/" + x + "/" + y + "/";
-        console.log("zxyString: " + zxyString);
+        //console.log("zxyString: " + zxyString);
 
         images[iy][ix].xpx = ix * tileSize;
         images[iy][ix].ypx = ypx;
