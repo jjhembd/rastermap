@@ -1,25 +1,50 @@
 'use strict';
 
-import{ initMap2D } from "./map2D.js";
+import { initMap2D } from "./map2D.js";
 import { lonToWebMercX, latToWebMercY } from "./coords.js";
+import * as shaders from "./shaders.js";
+import { initShaderProgram, drawScene } from "./webgl-utils.js";
+import { initBuffers } from "./initBuffers.js";
 
 function main() {
   // Define some constants
   const minZoom = 1;
   const maxZoom = 19;
 
-  // Set initial values
+  // Set initial values. TODO: make these properties of the map object?
   var x0 = 1;
   var y0 = 0;
   var zoom = 1;
 
-  // Setup 2D map
+  // Get graphics contexts for canvases
+  // WebGL canvas for drawing raster tiles
   const rasterCanvas = document.getElementById("rasterCanvas");
-  var display = rasterCanvas.getContext("2d", { premultipliedAlpha: false });
+  //var display = rasterCanvas.getContext("2d", { premultipliedAlpha: false });
+  var display = rasterCanvas.getContext("webgl", { premultipliedAlpha: false });
+  // 2D canvas for vector overlays
   const vectorCanvas = document.getElementById("vectorCanvas");
   var overlay = vectorCanvas.getContext("2d");
+
+  // Initialize shaders
+  const progInfo = initShaderProgram(display, 
+      shaders.vertexSrc, shaders.fragmentSrc);
+  // Load data into GPU for shaders: vertices, texture coordinates, indices
+  const bufferInfo = initBuffers(display);
+
+  // Initialize tiled map texture, with methods to update zoom and pan
+  // TODO: add callback to set needToRender at every update of the texture
   var map = initMap2D(display, overlay);
 
+  // Initialize shader uniforms
+  const uniformValues = {
+    uTextureSampler: map.sampler,
+  };
+
+  // Load tiles to the texture for the initial map
+  map.drawTiles(zoom, x0, y0);
+
+  // TODO: For all the below event listeners, we could move them to a separate
+  // module IF zoom, x0, y0 were all properties of the map object.
   // Handle a supplied bounding box
   var westDeg = document.getElementById("west");
   var eastDeg = document.getElementById("east");
@@ -92,7 +117,12 @@ function main() {
     map.drawTiles(zoom, x0, y0);
   }, false);
 
-  map.drawTiles(zoom, x0, y0);
+  requestAnimationFrame(checkRender);
+
+  function checkRender(time) {
+    drawScene(display, progInfo, bufferInfo, uniformValues);
+    requestAnimationFrame(checkRender);
+  }
 }
 
 export { main };

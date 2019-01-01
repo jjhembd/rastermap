@@ -1,5 +1,7 @@
+import { initTiledTexture } from "./webgl-textures.js";
+
 function initMap2D(rasterContext, vectorContext) {
-  // Define some parameters for a tiled map
+  // Define some parameters for a tiled map texture
   const tmsRoot = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/";
   const token = "pk.eyJ1IjoiamhlbWJkIiwiYSI6ImNqcHpueHpyZjBlMjAzeG9kNG9oNzI2NTYifQ.K7fqhk2Z2YZ8NIV94M-5nA";
   const tileSize = 256;
@@ -16,13 +18,18 @@ function initMap2D(rasterContext, vectorContext) {
   console.log("display size: " + display.canvas.width + 
       "x" + display.canvas.height);
 
-  // Return methods for drawing a 2D map
+  // Initialize the WebGL texture
+  const tileTex = initTiledTexture(display, numTilesX, numTilesY, tileSize);
+
+  // Return methods for updating the tiles, along with the texture sampler
   return {
     boundingBoxToZXY,
     xyToMapPixels,
     drawTiles,
+    sampler: tileTex.sampler,
   };
 
+  // TODO: automatically redraw tiles IF zoom,x0,y0 change to fit bounding box
   function boundingBoxToZXY(x1, y1, x2, y2) {
     // Inputs x1,y1, x2,y2 are Web Mercator coordinates in the range 
     // [0,1] X [0,1] with (0,0) at the top left corner.
@@ -102,18 +109,20 @@ function initMap2D(rasterContext, vectorContext) {
         var zxyString = "/" + zoom + "/" + x + "/" + y + "/";
         //console.log("zxyString: " + zxyString);
 
-        images[iy][ix].xpx = ix * tileSize;
-        images[iy][ix].ypx = ypx;
-        images[iy][ix].onload = drawTile;
+        images[iy][ix].xoffset = ix * tileSize;
+        images[iy][ix].yoffset = ypx;
+        //images[iy][ix].onload = drawTile;
+        images[iy][ix].onload = tileTex.updateTile;
+        images[iy][ix].crossOrigin = "anonymous";
         images[iy][ix].src = tmsRoot + tileSize + zxyString + 
           "?access_token=" + token;
       }
     }
   }
 
-  function drawTile() {
-    display.drawImage(this, this.xpx, this.ypx);
-  }
+  //function drawTile() {
+  //  display.drawImage(this, this.xpx, this.ypx);
+  //}
 }
 
 function wrap(x, xmax) {
