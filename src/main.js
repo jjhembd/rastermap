@@ -7,15 +7,6 @@ import { initShaderProgram, drawScene } from "./webgl-utils.js";
 import { initBuffers } from "./initBuffers.js";
 
 function main() {
-  // Define some constants
-  const minZoom = 1;
-  const maxZoom = 19;
-
-  // Set initial values. TODO: make these properties of the map object?
-  var x0 = 1;
-  var y0 = 0;
-  var zoom = 1;
-
   // Get graphics contexts for canvases
   // WebGL canvas for drawing raster tiles
   const rasterCanvas = document.getElementById("rasterCanvas");
@@ -39,11 +30,6 @@ function main() {
     uTextureSampler: map.sampler,
   };
 
-  // Load tiles to the texture for the initial map
-  map.drawTiles(zoom, x0, y0);
-
-  // TODO: For all the below event listeners, we could move them to a separate
-  // module IF zoom, x0, y0 were all properties of the map object.
   // Handle a supplied bounding box
   var westDeg = document.getElementById("west");
   var eastDeg = document.getElementById("east");
@@ -55,19 +41,14 @@ function main() {
     var y1 = latToWebMercY( toRadians(northDeg.value) );
     var x2 = lonToWebMercX( toRadians(eastDeg.value) );
     var y2 = latToWebMercY( toRadians(southDeg.value) );
-    //console.log("x1,y1  x2,y2 = " + x1 + "," + y1 + "  " + x2 + "," + y2);
-    var bboxZXY = map.boundingBoxToZXY(x1, y1, x2, y2);
-    if (!bboxZXY) {
+    var bbox = map.fitBoundingBox(x1, y1, x2, y2);
+    if (!bbox) {
       console.log("ERROR: Failed to define map containing this bounding box");
       return;
     }
-    zoom = bboxZXY.zoom;
-    x0 = bboxZXY.x0;
-    y0 = bboxZXY.y0;
-    map.drawTiles(zoom, x0, y0);
     // Draw the bounding box on the map
-    var pix1 = map.xyToMapPixels(x1, y1, zoom, x0, y0);
-    var pix2 = map.xyToMapPixels(x2, y2, zoom, x0, y0);
+    var pix1 = map.xyToMapPixels(x1, y1);
+    var pix2 = map.xyToMapPixels(x2, y2);
     overlay.strokeStyle = "#FF0000";
     overlay.strokeRect(pix1.x, pix1.y, pix2.x - pix1.x, pix2.y - pix1.y);
   }, false);
@@ -78,43 +59,19 @@ function main() {
 
   // Setup panning controls
   var up = document.getElementById("up");
-  up.addEventListener("click", function(click) {
-    y0--;
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  up.addEventListener("click", function(click) { map.pan( 0, -1); }, false);
   var down = document.getElementById("down");
-  down.addEventListener("click", function(click) {
-    y0++;
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  down.addEventListener("click", function(click) { map.pan( 0,  1); }, false);
   var left = document.getElementById("left");
-  left.addEventListener("click", function(click) {
-    x0--;
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  left.addEventListener("click", function(click) { map.pan(-1,  0); }, false);
   var right = document.getElementById("right");
-  right.addEventListener("click", function(click) {
-    x0++;
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  right.addEventListener("click", function(click) { map.pan( 1,  0); }, false);
 
   // Setup zoom controls
   var zoomIn = document.getElementById("zoomIn");
-  zoomIn.addEventListener("click", function(click) {
-    //zoom = Math.min(zoom + 1, maxZoom);
-    zoom++;
-    x0 = 2 * x0 + 2; // TODO: these formula depend on numX, numY
-    y0 = 2 * y0 + 1;
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  zoomIn.addEventListener("click", function(click) { map.zoomIn(); }, false);
   var zoomOut = document.getElementById("zoomOut");
-  zoomOut.addEventListener("click", function(click) {
-    //zoom = Math.max(zoom - 1, minZoom);
-    zoom--;
-    x0 = Math.ceil( (x0 - 2) / 2 );
-    y0 = Math.ceil( (y0 - 1) / 2 );
-    map.drawTiles(zoom, x0, y0);
-  }, false);
+  zoomOut.addEventListener("click", function(click) { map.zoomOut(); }, false);
 
   requestAnimationFrame(checkRender);
 

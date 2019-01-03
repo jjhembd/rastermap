@@ -10,31 +10,63 @@ function initMap2D(rasterContext, vectorContext) {
   const display = rasterContext;
   const overlay = vectorContext;
 
+  // Initialize position and zoom of the map
+  var zoom = 2;
+  var x0 = 0;
+  var y0 = 0;
+
   // Set canvas drawing buffer size equal to the CSS displayed size
   display.canvas.width = display.canvas.clientWidth;
   display.canvas.height = display.canvas.clientHeight;
   overlay.canvas.width = display.canvas.clientWidth;
   overlay.canvas.height = display.canvas.clientHeight;
-  console.log("display size: " + display.canvas.width + 
-      "x" + display.canvas.height);
 
   // Initialize the WebGL texture
   const tileTex = initTiledTexture(display, numTilesX, numTilesY, tileSize);
 
+  // Load tiles to the texture for the initial map
+  drawTiles();
+
   // Return methods for updating the tiles, along with the texture sampler
   return {
-    boundingBoxToZXY,
+    pan,
+    zoomIn,
+    zoomOut,
+    fitBoundingBox,
     xyToMapPixels,
-    drawTiles,
     sampler: tileTex.sampler,
   };
 
-  // TODO: automatically redraw tiles IF zoom,x0,y0 change to fit bounding box
-  function boundingBoxToZXY(x1, y1, x2, y2) {
+  function pan(dx, dy) {
+    x0 += dx;
+    y0 += dy;
+    drawTiles();
+  }
+
+  function zoomIn() {
+    zoom++;
+    x0 = Math.floor(2 * x0 + numTilesX / 2.0);
+    y0 = Math.floor(2 * y0 + numTilesY / 2.0);
+    drawTiles();
+  }
+
+  function zoomOut() {
+    zoom--;
+    x0 = Math.ceil( (x0 - numTilesX / 2.0) / 2 );
+    y0 = Math.ceil( (y0 - numTilesY / 2.0) / 2 );
+    drawTiles();
+  }
+
+  function fitBoundingBox(x1, y1, x2, y2) {
     // Inputs x1,y1, x2,y2 are Web Mercator coordinates in the range 
     // [0,1] X [0,1] with (0,0) at the top left corner.
     // ASSUMES (x2,y2) is SouthEast of (x1,y1) although we may have x2 < x1
     // if the box crosses the antimeridian (longitude = +/- PI)
+
+    // Remember old values
+    var oldZ = zoom;
+    var oldX = x0;
+    var oldY = y0;
 
     // 1. Calculate the maximum zoom level at which the bounding box will fit
     // within the map. Note: we want to be able to pan without having to change
@@ -48,35 +80,29 @@ function initMap2D(rasterContext, vectorContext) {
     var boxHeight = y2 - y1;
     if (boxHeight < 0) return false;
 
-    //console.log("boundingBox: box width,height = " + boxWidth + "," + boxHeight);
-
     // Width/height of a tile: 1 / 2 ** zoom. Hence we need
     //  (numTiles? - 1) / 2 ** zoom > boxSize in both X and Y.
     var zoomX = Math.log2( (numTilesX - 1) / boxWidth );
     var zoomY = Math.log2( (numTilesY - 1) / boxHeight );
-    var zoom = Math.floor( Math.min(zoomX, zoomY) );
-
-    //console.log("boundingBox: zoom = " + zoom);
-
+    zoom = Math.floor( Math.min(zoomX, zoomY) );
     var imax = 2 ** zoom; // Number of tiles at this zoom level
 
     // 2. Compute the tile indices of the center of the box
-    // WHY didn't this fail with undefined variables?
     var centerX = (x1 + boxWidth / 2.0) * imax;
     if (centerX > imax) centerX -= imax;
     var centerY = 0.5 * (y1 + y2) * imax;
-    //console.log("Box center X,Y = " + centerX + "," + centerY);
 
     // 3. Find the integer tile numbers of the top left corner of the rectangle
     //    whose center will be within 1/2 tile of (centerX, centerY)
-    var x0 = Math.round(centerX - numTilesX / 2.0);
+    x0 = Math.round(centerX - numTilesX / 2.0);
     x0 = wrap(x0, imax);  // in case we pushed x0 back across the antimeridian
-    var y0 = Math.round(centerY - numTilesY / 2.0);
+    y0 = Math.round(centerY - numTilesY / 2.0);
 
-    return { zoom, x0, y0 };
+    if (zoom !== oldZ || x0 !== oldX || y0 !== oldY) drawTiles();
+    return true;
   }
 
-  function xyToMapPixels(webMercX, webMercY, zoom, x0, y0) {
+  function xyToMapPixels(webMercX, webMercY) {
     var imax = 2 ** zoom; // Number of tiles at this zoom level
 
     // Convert input point to fractional number of tiles from x0, y0
@@ -92,7 +118,7 @@ function initMap2D(rasterContext, vectorContext) {
     };
   }
 
-  function drawTiles(zoom, x0, y0) {
+  function drawTiles() {
     overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
     var imax = 2 ** zoom;
     // Load tiles and draw on canvas.
