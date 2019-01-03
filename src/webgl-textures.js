@@ -21,29 +21,9 @@ function initTiledTexture(gl, numTilesX, numTilesY, tileSize) {
   gl.texImage2D( gl.TEXTURE_2D, level, internalFormat,
       width, height, border, srcFormat, srcType, dummy );
 
-  // Set up mipmapping, if appropriate
-  // TODO: move to separate function?
-  if (isPowerOf2(width) && isPowerOf2(height)) {
-    gl.generateMipmap(gl.TEXTURE_2D);
-  } else { // Turn off mipmapping 
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    // Set wrapping to clamp to edge
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  }
-
-  // Check for anisotropic filtering, and use it if available
-  // TODO: move to separate function? We have copied this section 3x...
-  var ext = (
-      gl.getExtension('EXT_texture_filter_anisotropic') ||
-      gl.getExtension('MOZ_EXT_texture_filter_anisotropic') || 
-      gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
-      );
-  if (ext) {
-    var maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-    gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
-        maxAnisotropy);
-  }
+  // Set up mipmapping and anisotropic filtering, if appropriate
+  setupMipMaps(gl, gl.TEXTURE_2D, width, height);
+  setTextureAnisotropy(gl, gl.TEXTURE_2D);
 
   // Save a link to the WebGL rendering context, for use in updateTextureTile()
   const glSave = gl;
@@ -67,6 +47,36 @@ function initTiledTexture(gl, numTilesX, numTilesY, tileSize) {
     sampler: texture,
     updateTile: updateTextureTile
   };
+}
+
+function setupMipMaps(gl, target, width, height) {
+  // On mobile browsers, we might still be using WebGL1.
+  // WebGL1 can't handle mipmapping for non-power-of-2 images
+  // (not sure if this limitation applies to externally provided mipmaps)
+  // For external mips, see https://stackoverflow.com/a/21540856/10082269
+  if (isPowerOf2(width) && isPowerOf2(height)) {
+    gl.generateMipmap(target);
+  } else { // Turn off mipmapping 
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    // Set wrapping to clamp to edge
+    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+  return;
+}
+
+function setTextureAnisotropy(gl, target) {
+  var ext = (
+      gl.getExtension('EXT_texture_filter_anisotropic') ||
+      gl.getExtension('MOZ_EXT_texture_filter_anisotropic') || 
+      gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
+      );
+  if (ext) {
+    var maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+    gl.texParameterf(target, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
+        maxAnisotropy);
+  }
+  return;
 }
 
 function loadTexture(gl, url, callBack) {
@@ -95,31 +105,9 @@ function loadTexture(gl, url, callBack) {
     console.log("texture image width, heigth = " + 
         image.width + ", " + image.height);
 
-    // On mobile browsers, we might still be using WebGL1.
-    // WebGL1 can't handle mipmapping for non-power-of-2 images
-    // (not sure if this limitation applies to externally provided mipmaps)
-    // For external mips, see https://stackoverflow.com/a/21540856/10082269
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-      gl.generateMipmap(gl.TEXTURE_2D);
-    } else {
-      // Turn off mipmapping 
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      // Set wrapping to clamp to edge
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    }
-
-    // Check for anisotropic filtering, and use it if available
-    var ext = (
-        gl.getExtension('EXT_texture_filter_anisotropic') ||
-        gl.getExtension('MOZ_EXT_texture_filter_anisotropic') || 
-        gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
-        );
-    if (ext) {
-      var maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-      gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 
-          maxAnisotropy);
-    }
+    // Setup mipmapping and anisotropic filtering, if appropriate
+    setupMipMaps(gl, gl.TEXTURE_2D, width, height);
+    setTextureAnisotropy(gl, gl.TEXTURE_2D);
 
     // Callback to let the calling program know everything is finally loaded
     callBack();
@@ -182,17 +170,7 @@ function loadCubeMapTexture(gl, urlArray, callBack) {
     //gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
 
     // Check for anisotropic filtering, and use it if available
-    var ext = (
-        gl.getExtension('EXT_texture_filter_anisotropic') ||
-        gl.getExtension('MOZ_EXT_texture_filter_anisotropic') || 
-        gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
-        );
-    if (ext) {
-      var maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-      // Note: maximum anisotropy may not be needed. Could use Math.min(8, max) ?
-      var anisotropy = Math.min(8, maxAnisotropy);
-      gl.texParameterf(gl.TEXTURE_CUBE_MAP, ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
-    }
+    setTextureAnisotropy(gl, gl.TEXTURE_CUBE_MAP);
 
     // Callback to let the calling program know everything is finally loaded
     callBack();

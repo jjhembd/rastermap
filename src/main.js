@@ -19,7 +19,6 @@ function main() {
   // Get graphics contexts for canvases
   // WebGL canvas for drawing raster tiles
   const rasterCanvas = document.getElementById("rasterCanvas");
-  //var display = rasterCanvas.getContext("2d", { premultipliedAlpha: false });
   var display = rasterCanvas.getContext("webgl", { premultipliedAlpha: false });
   // 2D canvas for vector overlays
   const vectorCanvas = document.getElementById("vectorCanvas");
