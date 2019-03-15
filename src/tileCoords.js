@@ -22,6 +22,10 @@ function initTileCoords( tileAPI, projection ) {
 
   function updateTransform() {
     nTiles = 2 ** zoom;
+    // pan actions may have pushed us across an antimeridian or pole
+    xTile0 = wrap(xTile0, nTiles);
+    yTile0 = wrap(yTile0, nTiles);
+
     origin[0] = xTile0 / nTiles;
     origin[1] = yTile0 / nTiles;
     scale[0] = nTiles / numTiles.x; // Problematic if < 1 ?
@@ -43,6 +47,7 @@ function initTileCoords( tileAPI, projection ) {
     // Methods to compute positions within current map
     updateCamMapPos,
     xyToMapPixels,
+    tileDistance,
 
     // Methods to update map state
     fitBoundingBox,
@@ -55,7 +60,7 @@ function initTileCoords( tileAPI, projection ) {
     // Input position is a pointer to a 3-element array, containing the
     // longitude, latitude, and altitude of the camera
     
-    // Project lon/lat to global x/y
+    // Project lon/lat to global x/y  TODO: move this out?
     const projected = [0,0];
     projection.lonLatToXY(projected, position);
 
@@ -66,7 +71,7 @@ function initTileCoords( tileAPI, projection ) {
     camMapPos[2] = scale[0];
     camMapPos[3] = scale[1];
 
-    // Set projection-related parameters for shader
+    // Set projection-related parameters for shader  TODO: move this out
     projection.setShaderParams(position[1]);
 
     return;
@@ -81,6 +86,51 @@ function initTileCoords( tileAPI, projection ) {
     local[1] *= numTiles.y * tileSize;
 
     return local;
+  }
+
+  function tileDistance(z, x, y) {
+    // Given input tile indices, return a distance metric
+    // indicating how far the input tile is from the current map
+
+    // Find edges of tile and map, in units of tiles at current map zoom
+    var zoomFac = 2 ** (zoom - z);
+    var tile = {
+      x1: x * zoomFac,
+      x2: (x + 1) * zoomFac,
+      y1: y * zoomFac,
+      y2: (y + 1) * zoomFac,
+    }
+    var map = {
+      x1: xTile0,
+      x2: xTile0 + numTiles.x + 1, // Note: may extend across antimeridian!
+      y1: yTile0,
+      y2: yTile0 + numTiles.y + 1, // Note: may extend across a pole!
+    };
+
+    // Find horizontal distance between current tile and edges of current map
+    //  hdist < 0: part of input tile is within map
+    //  hdist = 0: tile edge touches edge of map
+    //  hdist = n: tile edge is n tiles away from edge of map,
+    //             where a "tile" is measured at map zoom level
+
+    // Note: need to be careful with distances crossing an antimeridian or pole
+    var xdist = Math.min(
+        // Test for non-intersection with tile in raw position
+        Math.max(map.x1 - tile.x2, tile.x1 - map.x2),
+        // Re-test with tile shifted across antimeridian 
+        Math.max(map.x1 - (tile.x2 + nTiles), (tile.x1 + nTiles) - map.x2)
+        );
+    var ydist = Math.min(
+        // Test for non-intersection with tile in raw position
+        Math.max(map.y1 - tile.y2, tile.y1 - map.y2),
+        // Re-test with tile shifted across pole 
+        Math.max(map.y1 - (tile.y2 + nTiles), (tile.y1 + nTiles) - map.y2)
+        );
+    // Use the largest distance
+    var hdist = Math.max(xdist, ydist);
+
+    // Adjust for zoom difference
+    return hdist - 1.0 + 1.0 / zoomFac;
   }
 
   function toLocal(local, global) {
