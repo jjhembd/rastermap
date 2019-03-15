@@ -1,59 +1,67 @@
-function initMap2D(display, overlay) {
-  // Define some parameters for a tiled map
-  const numTilesX = 4;
-  const numTilesY = 3;
+import { initTileCoords } from "./tileCoords.js";
+
+function initMap2D(display, overlay, tileAPI, projection) {
+  // Setup tile coordinates  TODO: tileAPI should include projection?
+  const tileCoords = initTileCoords( tileAPI, projection );
 
   // Set canvas drawing buffer size equal to the CSS displayed size
-  display.canvas.width = display.canvas.clientWidth;
-  display.canvas.height = display.canvas.clientHeight;
-  overlay.canvas.width = display.canvas.clientWidth;
-  overlay.canvas.height = display.canvas.clientHeight;
-  console.log("display size: " + display.canvas.width + 
-      "x" + display.canvas.height);
+  const mapWidth = tileCoords.numTiles.x * tileAPI.tileSize;
+  const mapHeight = tileCoords.numTiles.y * tileAPI.tileSize;
+  display.canvas.width = mapWidth;
+  display.canvas.height = mapHeight;
+  overlay.canvas.width = mapWidth;
+  overlay.canvas.height = mapHeight;
+  console.log("display size: " + mapWidth + "x" + mapHeight);
+
+  const images = {};
 
   // Return methods for drawing a 2D map
   return {
     drawTiles,
+    pan: tileCoords.pan,
+    zoomIn: tileCoords.zoomIn,
+    zoomOut: tileCoords.zoomOut,
+    fitBoundingBox: tileCoords.fitBoundingBox,
   };
 
   function drawTiles(zoom, x0, y0) {
-    overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
-    var imax = 2 ** zoom;
-    // Load tiles and draw on canvas.
-    // Note: could return images array instead of drawing on canvas?
-    const images = [];
-    for (let iy = 0; iy < numTilesY; iy++) {
-      images[iy] = [];
-      var y = wrap(y0 + iy, imax);
-      var ypx = iy * tileSize;
+    // Clear current canvases
+    display.clearRect(0, 0, mapWidth, mapHeight);
+    overlay.clearRect(0, 0, mapWidth, mapHeight);
 
-      for (let ix = 0; ix < numTilesX; ix++) {
-        images[iy][ix] = new Image();
-        var x = wrap(x0 + ix, imax);
-        var zxyString = "/" + zoom + "/" + x + "/" + y + "/";
-        //console.log("zxyString: " + zxyString);
+    // Loop over tiles in the map
+    var zoom = tileCoords.zoom();
+    for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
+      var y = wrap( tileCoords.yTile0() + iy, tileCoords.nTiles() );
 
-        images[iy][ix].xpx = ix * tileSize;
-        images[iy][ix].ypx = ypx;
-        images[iy][ix].onload = drawTile;
-        images[iy][ix].src = tmsRoot + tileSize + zxyString + 
-          "?access_token=" + token;
+      for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
+        var x = wrap( tileCoords.xTile0() + ix, tileCoords.nTiles() );
+        var tileID = tileAPI.getID(zoom, x, y);
+
+        if (!images[tileID]) { // Image doesn't exist. Create and request it
+          images[tileID] = new Image();
+          images[tileID].zoom = zoom;
+          images[tileID].indx = x;
+          images[tileID].indy = y;
+          images[tileID].crossOrigin = "anonymous";
+          images[tileID].src = tileAPI.getURL(tileID);
+          console.log("drawTiles: requesting tile " + tileID);
+          console.log("Number of tiles in memory: " + Object.keys(images).length);
+        } else if (images[tileID].complete) {
+          var xoffset = ix * tileAPI.tileSize;
+          var yoffset = iy * tileAPI.tileSize;
+          display.drawImage(images[tileID], xoffset, yoffset);
+        }
+
       }
     }
   }
 
-  function drawTile() {
-    display.drawImage(this, this.xpx, this.ypx);
-  }
 }
 
 function wrap(x, xmax) {
-  while (x < 0) {
-    x += xmax;
-  }
-  while (x >= xmax) {
-    x -= xmax;
-  }
+  while (x < 0) x += xmax;
+  while (x >= xmax) x -= xmax;
   return x;
 }
 

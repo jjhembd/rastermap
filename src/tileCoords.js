@@ -4,7 +4,7 @@ function initTileCoords( tileAPI, projection ) {
   const maxZoom = tileAPI.maxZoom;
 
   // Dimensions of our working set of tiles
-  const numTiles = Object.freeze({ x: 4, y: 4 });
+  const numTiles = Object.freeze({ x: 4, y: 3 });
 
   // Working variables to track camera position within the texture
   const camMapPos = new Float32Array(4); // [x, y, xscale, yscale]
@@ -46,9 +46,9 @@ function initTileCoords( tileAPI, projection ) {
 
     // Methods to update map state
     fitBoundingBox,
-    //pan,
-    //zoomIn,
-    //zoomOut,
+    pan,
+    zoomIn,
+    zoomOut,
   };
 
   function updateCamMapPos( position ) {
