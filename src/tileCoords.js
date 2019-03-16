@@ -11,7 +11,7 @@ function initTileCoords( tileAPI, projection ) {
 
   // Initialize position and zoom of the map. All are integers
   // Note: the case (numTiles.x != numTiles.y) is not yet well understood
-  var zoom = Math.floor( Math.log2( Math.min(numTiles.x, numTiles.y) ) );
+  var zoom = Math.floor( Math.log2( Math.max(numTiles.x, numTiles.y) ) );
   var xTile0 = 0;
   var yTile0 = 0;
 
@@ -213,6 +213,7 @@ function initTileCoords( tileAPI, projection ) {
   }
 
   function zoomIn() {
+    if (zoom >= maxZoom) return false;
     zoom++;
     xTile0 = Math.floor(2 * xTile0 + numTiles.x / 2.0);
     yTile0 = Math.floor(2 * yTile0 + numTiles.y / 2.0);
@@ -221,6 +222,7 @@ function initTileCoords( tileAPI, projection ) {
   }
 
   function zoomOut() {
+    if (zoom <= 0) return false;
     zoom--;
     xTile0 = Math.ceil( (xTile0 - numTiles.x / 2.0) / 2 );
     yTile0 = Math.ceil( (yTile0 - numTiles.y / 2.0) / 2 );

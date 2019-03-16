@@ -32,33 +32,71 @@ function initMap2D(display, overlay, tileAPI, projection) {
     // Loop over tiles in the map
     var zoom = tileCoords.zoom();
     for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
-      var y = wrap( tileCoords.yTile0() + iy, tileCoords.nTiles() );
-
+      let y = wrap( tileCoords.yTile0() + iy, tileCoords.nTiles() );
       for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
         let x = wrap( tileCoords.xTile0() + ix, tileCoords.nTiles() );
-        let tileID = tileAPI.getID(zoom, x, y);
-
-        if (!images[tileID]) { // Image doesn't exist. Create and request it
-          console.log("drawTiles: # tiles = " + Object.keys(images).length +
-              ".  Adding tile " + tileID);
-          images[tileID] = new Image();
-          images[tileID].zoom = zoom;
-          images[tileID].indx = x;
-          images[tileID].indy = y;
-          images[tileID].crossOrigin = "anonymous";
-          images[tileID].src = tileAPI.getURL(tileID);
-        } else if (images[tileID].complete) {
-          var xoffset = ix * tileAPI.tileSize;
-          var yoffset = iy * tileAPI.tileSize;
-          display.drawImage(images[tileID], xoffset, yoffset);
-        }
-
+        drawTile(display, ix, iy, zoom, x, y, images, tileAPI);
       }
     }
     // Clean up -- don't let images object get too big
     prune(images, tileCoords);
     return;
   }
+}
+
+function drawTile(ctx, ix, iy, z, x, y, tiles, tileAPI) {
+  let tileID = tileAPI.getID(z, x, y);
+  let tile = tiles[tileID];
+
+  if (tile && tile.complete && tile.naturalWidth !== 0) {
+    ctx.drawImage(
+        tile,
+        //sx,      // Start using tile from this pixel in x
+        //sy,      // Start using tile from this pixel in y
+        //sWidth,  // Use this many pixels from the tile
+        //sHeight, // Use this many pixels from the tile
+        ix * tileAPI.tileSize,
+        iy * tileAPI.tileSize,
+        //tileAPI.tileSize,
+        //tileAPI.tileSize
+        );
+    return;
+  }
+
+  // Get pz, px, py of parent
+  var pz = z - 1;
+  var px = Math.floor(x / 2);
+  var py = Math.floor(y / 2);
+  let parentID = tileAPI.getID(pz, px, py);
+  let parentTile = tiles[parentID];
+  if (parentTile && parentTile.complete && parentTile.naturalWidth !== 0) {
+    ctx.drawImage(
+        parentTile,
+        (x / 2 - px) * tileAPI.tileSize,
+        (y / 2 - py) * tileAPI.tileSize,
+        tileAPI.tileSize / 2,
+        tileAPI.tileSize / 2,
+        ix * tileAPI.tileSize,
+        iy * tileAPI.tileSize,
+        tileAPI.tileSize,
+        tileAPI.tileSize,
+        );
+  }
+
+  // drawTile(ctx, zoom, ix, iy, pz, px, py, tiles, tileAPI);
+
+  if (!tile) {  // Tile doesn't exist. Create it and request image
+    console.log("drawTile: # tiles = " + Object.keys(tiles).length +
+        ".  Adding tile " + tileID);
+    tile = new Image();
+    tile.zoom = z;
+    tile.indx = x;
+    tile.indy = y;
+    tile.crossOrigin = "anonymous";
+    tile.src = tileAPI.getURL(tileID);
+    tiles[tileID] = tile;
+  }
+  return;
 }
 
 function prune(tiles, coords) {
