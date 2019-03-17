@@ -13,7 +13,44 @@ function initMap2D(display, overlay, tileAPI, projection) {
   overlay.canvas.height = mapHeight;
   console.log("display size: " + mapWidth + "x" + mapHeight);
 
+  // Initialize images object to store a cache of map tiles
   const images = {};
+
+  // Initialize tracking object, to check if map needs to be updated
+  const dz = [];
+  for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
+    dz[iy] = [];
+    for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
+      // dz indicates the difference between the requested zoom level
+      // and the zoom level actually written to this tile
+      dz[iy][ix] = tileAPI.maxZoom;
+    }
+  }
+  const oneTileComplete = 1. / tileCoords.numTiles.x / tileCoords.numTiles.y;
+  const mapStatus = {
+    zoom: 0,
+    xTile0: 0,
+    yTile0: 0,
+    complete: 0.0,
+    dz,
+    changed: function() {
+      return (this.zoom !== tileCoords.zoom()  ||
+          this.xTile0 !== tileCoords.xTile0()  ||
+          this.yTile0 !== tileCoords.yTile0()  );
+    },
+    reset: function() {
+      this.zoom = tileCoords.zoom();
+      this.xTile0 = tileCoords.xTile0();
+      this.yTile0 = tileCoords.yTile0();
+      this.complete = 0.0;
+      for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
+        for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
+          dz[iy][ix] = tileAPI.maxZoom;
+        }
+      }
+      return;
+    },
+  }
 
   // Return methods for drawing a 2D map
   return {
@@ -22,28 +59,44 @@ function initMap2D(display, overlay, tileAPI, projection) {
     zoomIn: tileCoords.zoomIn,
     zoomOut: tileCoords.zoomOut,
     fitBoundingBox: tileCoords.fitBoundingBox,
+    loaded: function () {
+      return mapStatus.complete;
+    },
   };
 
   function drawTiles() {
-    // Clear current canvases
-    display.clearRect(0, 0, mapWidth, mapHeight);
-    overlay.clearRect(0, 0, mapWidth, mapHeight);
+    if ( mapStatus.changed() ) {
+      // Position or zoom of map has changed. Reset status
+      mapStatus.reset();
+      // Clear current canvases
+      display.clearRect(0, 0, mapWidth, mapHeight);
+      overlay.clearRect(0, 0, mapWidth, mapHeight);
+    }
+
+    // Quick exit if map is already complete.
+    if ( mapStatus.complete === 1.0 ) return false; // No change!
 
     // Loop over tiles in the map
-    var zoom = tileCoords.zoom();
     for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
       let y = wrap( tileCoords.yTile0() + iy, tileCoords.nTiles() );
 
       for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
+        if (mapStatus.dz[iy][ix] === 0) continue; // This tile already done
+
         let x = wrap( tileCoords.xTile0() + ix, tileCoords.nTiles() );
 
-        drawTile(display, ix, iy, images, tileAPI,
-            zoom, x, y, 0, 0, tileAPI.tileSize);
+        mapStatus.dz[iy][ix] = drawTile(display, ix, iy, images, tileAPI,
+            tileCoords.zoom(), x, y, 0, 0, tileAPI.tileSize);
+
+        if (mapStatus.dz[iy][ix] == 0) mapStatus.complete += oneTileComplete;
       }
     }
     // Clean up -- don't let images object get too big
     prune(images, tileCoords);
-    return;
+    // TODO: if we are waiting a long time for a tile to load,
+    // the map will continuously update.
+    // The stuck tile will be continually rewritten with the parent tile.
+    return true; // Map has updated or is not yet complete
   }
 }
 
@@ -54,6 +107,10 @@ function drawTile(
     tileAPI,     // API info of the tile service
     z, x, y,     // Coordinates of the tile in the API to be read
     sx, sy, sw   // Cropping parameters--which part of the tile to use
+    // Return value indicates the number of zoom levels between the requested
+    // zoom and the zoom actually written. Return = 0 means tile is complete.
+    // TODO: return without drawing if the closest zoom level available is
+    // the same as what is already written
     ) {
 
   // Retrieve the specified tile from the tiles object
@@ -77,10 +134,12 @@ function drawTile(
         size,      // Number of pixels to paint in y
         );
     //if (sw < tileAPI.tileSize) throw ("drew a parent");
-    return; // Success! We are done with this tile
+    return 0; // Success! We wrote the requested resolution
   }
 
   // Looks like the tile wasn't ready. Try using the parent tile
+  // Track the number of generations we go back before finding a live tile
+  var generations = 1;
   if (z > 0 && sw > 1) { // Don't look too far back
     // Get coordinates and cropping parameters of the parent
     let pz = z - 1;
@@ -91,13 +150,13 @@ function drawTile(
     let psw = sw / 2;
 
     // Note: recursive function call!
-    drawTile(ctx, ix, iy, tiles, tileAPI,
+    generations += drawTile(ctx, ix, iy, tiles, tileAPI,
         pz, px, py, psx, psy, psw);
   }
 
   if (!tile) {  // Tile didn't even exist. Create it and request image
-    console.log("drawTile: # tiles = " + Object.keys(tiles).length +
-        ".  Adding tile " + tileID);
+    //console.log("drawTile: # tiles = " + Object.keys(tiles).length +
+    //    ".  Adding tile " + tileID);
     tile = new Image();
     tile.zoom = z;
     tile.indx = x;
@@ -106,7 +165,8 @@ function drawTile(
     tile.src = tileAPI.getURL(tileID);
     tiles[tileID] = tile;
   }
-  return;
+
+  return generations;
 }
 
 function prune(tiles, coords) {
@@ -120,8 +180,7 @@ function prune(tiles, coords) {
         tiles[id].indy
         );
     if (distance >= 3.0) {
-      console.log("prune: tile " + id + " distance=" + distance + 
-          "  xTile0: " + coords.xTile0() );
+      //console.log("prune: tile " + id + " distance=" + distance);
       // Cancel any outstanding request
       tiles[id].src = "";
       // Delete all data for this tile

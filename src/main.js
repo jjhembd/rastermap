@@ -49,10 +49,18 @@ function main() {
   var zoomOut = document.getElementById("zoomOut");
   zoomOut.addEventListener("click", function(click) { map.zoomOut(); }, false);
 
+  // Track loading status
+  var loaded = document.getElementById("completion");
   // Start animation loop
   requestAnimationFrame(checkRender);
   function checkRender(time) {
     map.drawTiles();
+    var percent = map.loaded() * 100;
+    if (percent < 100) {
+      loaded.innerHTML = "Loading: " + percent.toFixed(0) + "%";
+    } else {
+      loaded.innerHTML = "Complete! " + percent.toFixed(0) + "%";
+    }
     requestAnimationFrame(checkRender);
   }
 }
