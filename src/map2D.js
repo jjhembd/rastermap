@@ -33,9 +33,12 @@ function initMap2D(display, overlay, tileAPI, projection) {
     var zoom = tileCoords.zoom();
     for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
       let y = wrap( tileCoords.yTile0() + iy, tileCoords.nTiles() );
+
       for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
         let x = wrap( tileCoords.xTile0() + ix, tileCoords.nTiles() );
-        drawTile(display, ix, iy, zoom, x, y, images, tileAPI);
+
+        drawTile(display, ix, iy, images, tileAPI,
+            zoom, x, y, 0, 0, tileAPI.tileSize);
       }
     }
     // Clean up -- don't let images object get too big
@@ -44,48 +47,55 @@ function initMap2D(display, overlay, tileAPI, projection) {
   }
 }
 
-function drawTile(ctx, ix, iy, z, x, y, tiles, tileAPI) {
+function drawTile(
+    ctx,         // 2D canvas context, to which the tile will be drawn
+    ix, iy,      // Indices of which tile in the canvas to update
+    tiles,       // Array of image objects
+    tileAPI,     // API info of the tile service
+    z, x, y,     // Coordinates of the tile in the API to be read
+    sx, sy, sw   // Cropping parameters--which part of the tile to use
+    ) {
+
+  // Retrieve the specified tile from the tiles object
   let tileID = tileAPI.getID(z, x, y);
   let tile = tiles[tileID];
+  let size = tileAPI.tileSize;
 
+  // If the tile exists and is ready, write it to the canvas
   if (tile && tile.complete && tile.naturalWidth !== 0) {
+    //console.log("drawTile: ix, iy, z, x, y, sx, sy, sw = " + ix + ", " + iy + 
+    //    ", " + z + ", " + x + ", " + y + ", " + sx + ", " + sy + ", " + sw);
     ctx.drawImage(
-        tile,
-        //sx,      // Start using tile from this pixel in x
-        //sy,      // Start using tile from this pixel in y
-        //sWidth,  // Use this many pixels from the tile
-        //sHeight, // Use this many pixels from the tile
-        ix * tileAPI.tileSize,
-        iy * tileAPI.tileSize,
-        //tileAPI.tileSize,
-        //tileAPI.tileSize
+        tile,      // Image to read, and paint to the canvas
+        sx,        // First x-pixel in tile to read
+        sy,        // First y-pixel in tile to read
+        sw,        // Number of pixels to read in x
+        sw,        // Number of pixels to read in y
+        ix * size, // First x-pixel in canvas to paint
+        iy * size, // First y-pixel in canvas to paint
+        size,      // Number of pixels to paint in x
+        size,      // Number of pixels to paint in y
         );
-    return;
+    //if (sw < tileAPI.tileSize) throw ("drew a parent");
+    return; // Success! We are done with this tile
   }
 
-  // Get pz, px, py of parent
-  var pz = z - 1;
-  var px = Math.floor(x / 2);
-  var py = Math.floor(y / 2);
-  let parentID = tileAPI.getID(pz, px, py);
-  let parentTile = tiles[parentID];
-  if (parentTile && parentTile.complete && parentTile.naturalWidth !== 0) {
-    ctx.drawImage(
-        parentTile,
-        (x / 2 - px) * tileAPI.tileSize,
-        (y / 2 - py) * tileAPI.tileSize,
-        tileAPI.tileSize / 2,
-        tileAPI.tileSize / 2,
-        ix * tileAPI.tileSize,
-        iy * tileAPI.tileSize,
-        tileAPI.tileSize,
-        tileAPI.tileSize,
-        );
+  // Looks like the tile wasn't ready. Try using the parent tile
+  if (z > 0 && sw > 1) { // Don't look too far back
+    // Get coordinates and cropping parameters of the parent
+    let pz = z - 1;
+    let px = Math.floor(x / 2);
+    let py = Math.floor(y / 2);
+    let psx = sx / 2 + (x / 2 - px) * size;
+    let psy = sy / 2 + (y / 2 - py) * size;
+    let psw = sw / 2;
+
+    // Note: recursive function call!
+    drawTile(ctx, ix, iy, tiles, tileAPI,
+        pz, px, py, psx, psy, psw);
   }
 
-  // drawTile(ctx, zoom, ix, iy, pz, px, py, tiles, tileAPI);
-
-  if (!tile) {  // Tile doesn't exist. Create it and request image
+  if (!tile) {  // Tile didn't even exist. Create it and request image
     console.log("drawTile: # tiles = " + Object.keys(tiles).length +
         ".  Adding tile " + tileID);
     tile = new Image();
