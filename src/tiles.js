@@ -1,8 +1,4 @@
 function initTiles(tileCoords, tileAPI, display) {
-
-  const mapWidth = tileCoords.numTiles.x * tileAPI.tileSize;
-  const mapHeight = tileCoords.numTiles.y * tileAPI.tileSize;
-
   // Initialize images object to store a cache of map tiles
   const images = {};
 
@@ -18,20 +14,9 @@ function initTiles(tileCoords, tileAPI, display) {
   }
   const oneTileComplete = 1. / tileCoords.numTiles.x / tileCoords.numTiles.y;
   const mapStatus = {
-    zoom: 0,
-    xTile0: 0,
-    yTile0: 0,
     complete: 0.0,
     dz,
-    changed: function() {
-      return (this.zoom !== tileCoords.zoom()  ||
-          this.xTile0 !== tileCoords.xTile0()  ||
-          this.yTile0 !== tileCoords.yTile0()  );
-    },
     reset: function() {
-      this.zoom = tileCoords.zoom();
-      this.xTile0 = tileCoords.xTile0();
-      this.yTile0 = tileCoords.yTile0();
       this.complete = 0.0;
       for (let iy = 0; iy < tileCoords.numTiles.y; iy++) {
         for (let ix = 0; ix < tileCoords.numTiles.x; ix++) {
@@ -44,20 +29,11 @@ function initTiles(tileCoords, tileAPI, display) {
 
   // Return methods for drawing a 2D map
   return {
+    mapStatus,
     drawTiles,
-    loaded: function () {
-      return mapStatus.complete;
-    },
   };
 
   function drawTiles() {
-    if ( mapStatus.changed() ) {
-      // Position or zoom of map has changed. Reset status
-      mapStatus.reset();
-      // Clear current canvases
-      display.clearRect(0, 0, mapWidth, mapHeight);
-    }
-
     // Quick exit if map is already complete.
     if ( mapStatus.complete === 1.0 ) return false; // No change!
 
