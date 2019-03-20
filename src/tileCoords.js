@@ -4,14 +4,13 @@ function initTileCoords( tileAPI, projection ) {
   const maxZoom = tileAPI.maxZoom;
 
   // Dimensions of our working set of tiles
-  const numTiles = Object.freeze({ x: 4, y: 3 });
+  const gridSize = Object.freeze({ x: 4, y: 3 });
 
   // Working variables to track camera position within the texture
   const camMapPos = new Float32Array(4); // [x, y, xscale, yscale]
 
   // Initialize position and zoom of the map. All are integers
-  // Note: the case (numTiles.x != numTiles.y) is not yet well understood
-  var zoom = Math.floor( Math.log2( Math.max(numTiles.x, numTiles.y) ) );
+  var zoom = Math.floor( Math.log2( Math.max(gridSize.x, gridSize.y) ) );
   var xTile0 = 0;
   var yTile0 = 0;
 
@@ -22,14 +21,10 @@ function initTileCoords( tileAPI, projection ) {
 
   function updateTransform() {
     nTiles = 2 ** zoom;
-    // pan actions may have pushed us across an antimeridian or pole
-    xTile0 = wrap(xTile0, nTiles);
-    yTile0 = wrap(yTile0, nTiles);
-
     origin[0] = xTile0 / nTiles;
     origin[1] = yTile0 / nTiles;
-    scale[0] = nTiles / numTiles.x; // Problematic if < 1 ?
-    scale[1] = nTiles / numTiles.y;
+    scale[0] = nTiles / gridSize.x; // Problematic if < 1 ?
+    scale[1] = nTiles / gridSize.y;
   }
   // Initialize transform
   updateTransform();
@@ -37,12 +32,8 @@ function initTileCoords( tileAPI, projection ) {
   return {
     // Info about current camera position and map state
     camMapPos,
-    // NOTE: functions prevent update of z/x/y from outside
-    zoom: function() { return zoom },
-    xTile0: function() { return xTile0 },
-    yTile0: function() { return yTile0 },
-    nTiles: function() { return nTiles },
-    numTiles,
+    getZXY,
+    gridSize,
 
     // Methods to compute positions within current map
     updateCamMapPos,
@@ -55,6 +46,13 @@ function initTileCoords( tileAPI, projection ) {
     zoomIn,
     zoomOut,
   };
+
+  function getZXY(zxy, ix, iy) {
+    // Report the ZXY of a given tile within the grid
+    zxy[0] = zoom;
+    zxy[1] = wrap(xTile0 + ix, nTiles);
+    zxy[2] = wrap(yTile0 + iy, nTiles);
+  }
 
   function updateCamMapPos( position ) {
     // Input position is a pointer to a 3-element array, containing the
@@ -82,8 +80,8 @@ function initTileCoords( tileAPI, projection ) {
     const local = [0,0];
     // TODO: input as vector
     toLocal(local, [webMercX, webMercY]);
-    local[0] *= numTiles.x * tileSize;
-    local[1] *= numTiles.y * tileSize;
+    local[0] *= gridSize.x * tileSize;
+    local[1] *= gridSize.y * tileSize;
 
     return local;
   }
@@ -102,9 +100,9 @@ function initTileCoords( tileAPI, projection ) {
     }
     var map = {
       x1: xTile0,
-      x2: xTile0 + numTiles.x + 1, // Note: may extend across antimeridian!
+      x2: xTile0 + gridSize.x + 1, // Note: may extend across antimeridian!
       y1: yTile0,
-      y2: yTile0 + numTiles.y + 1, // Note: may extend across a pole!
+      y2: yTile0 + gridSize.y + 1, // Note: may extend across a pole!
     };
 
     // Find horizontal distance between current tile and edges of current map
@@ -165,7 +163,7 @@ function initTileCoords( tileAPI, projection ) {
 
     // 1. Calculate the maximum zoom level at which the bounding box will fit
     // within the map. Note: we want to be able to pan without having to change
-    // zoom. Hence the bounding box must always fit within numTiles - 1.
+    // zoom. Hence the bounding box must always fit within gridSize - 1.
     // (allows panning to where p1[0] is near the right edge of a tile.)
 
     // Compute box width and height, with special handling for antimeridian
@@ -175,11 +173,11 @@ function initTileCoords( tileAPI, projection ) {
     if (boxHeight < 0) return false;
 
     // Width/height of a tile: 1 / 2 ** zoom. Hence we need
-    //  (numTiles? - 1) / 2 ** zoom > boxSize in both X and Y.
-    // BUT we need the minimum zoom to have at least numTiles, i.e.,
-    // min zoom = log2(numTiles).
-    var zoomX = Math.log2( Math.max(numTiles.x, (numTiles.x - 1) / boxWidth) );
-    var zoomY = Math.log2( Math.max(numTiles.y, (numTiles.y - 1) / boxHeight) );
+    //  (gridSize? - 1) / 2 ** zoom > boxSize in both X and Y.
+    // BUT we need the minimum zoom to have at least gridSize, i.e.,
+    // min zoom = log2(gridSize).
+    var zoomX = Math.log2( Math.max(gridSize.x, (gridSize.x - 1) / boxWidth) );
+    var zoomY = Math.log2( Math.max(gridSize.y, (gridSize.y - 1) / boxHeight) );
     zoom = Math.floor( Math.min(zoomX, zoomY) );
     zoom = Math.min(zoom, maxZoom);
     nTiles = 2 ** zoom; // Number of tiles at this zoom level
@@ -191,11 +189,11 @@ function initTileCoords( tileAPI, projection ) {
 
     // 3. Find the integer tile numbers of the top left corner of the rectangle
     //    whose center will be within 1/2 tile of (centerX, centerY)
-    xTile0 = Math.round(centerX - numTiles.x / 2.0);
+    xTile0 = Math.round(centerX - gridSize.x / 2.0);
     xTile0 = wrap(xTile0, nTiles); // in case we crossed the antimeridian
-    yTile0 = Math.round(centerY - numTiles.y / 2.0);
+    yTile0 = Math.round(centerY - gridSize.y / 2.0);
     // Don't let box cross poles
-    yTile0 = Math.min(Math.max(0, yTile0), nTiles - numTiles.y);
+    yTile0 = Math.min(Math.max(0, yTile0), nTiles - gridSize.y);
 
     // Return a flag indicating whether map parameters were updated
     if (zoom !== oldZ || xTile0 !== oldX || yTile0 !== oldY) {
@@ -206,26 +204,26 @@ function initTileCoords( tileAPI, projection ) {
   }
 
   function pan(dx, dy) {
-    xTile0 += dx;
-    yTile0 += dy;
+    xTile0 = wrap(xTile0 + dx, nTiles);
+    yTile0 = wrap(yTile0 + dy, nTiles);
     updateTransform();
     return (dx || dy);
   }
 
   function zoomIn() {
-    if (zoom >= maxZoom) return false;
+    if (zoom > maxZoom - 1) return false;
     zoom++;
-    xTile0 = Math.floor(2 * xTile0 + numTiles.x / 2.0);
-    yTile0 = Math.floor(2 * yTile0 + numTiles.y / 2.0);
+    xTile0 = Math.floor(2 * xTile0 + gridSize.x / 2.0);
+    yTile0 = Math.floor(2 * yTile0 + gridSize.y / 2.0);
     updateTransform();
     return true;
   }
 
   function zoomOut() {
-    if (zoom <= 0) return false;
+    if (zoom < 1) return false;
     zoom--;
-    xTile0 = Math.ceil( (xTile0 - numTiles.x / 2.0) / 2 );
-    yTile0 = Math.ceil( (yTile0 - numTiles.y / 2.0) / 2 );
+    xTile0 = Math.ceil( (xTile0 - gridSize.x / 2.0) / 2 );
+    yTile0 = Math.ceil( (yTile0 - gridSize.y / 2.0) / 2 );
     updateTransform();
     return true;
   }

@@ -10,8 +10,10 @@ function initTiles(tileAPI) {
     prune,
   };
 
-  function retrieve(tile, z, x, y) {
-    getTileOrParent(tile, z, x, y, 0, 0, size);
+  //function retrieve(tile, z, x, y) {
+  function retrieve(tile, zxy) {
+    //getTileOrParent(tile, z, x, y, 0, 0, size);
+    getTileOrParent(tile, zxy[0], zxy[1], zxy[2], 0, 0, size);
     // Return a flag indicating whether we have an image ready
     return (tile.img && tile.img.complete && tile.img.naturalWidth !== 0);
   }

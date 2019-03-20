@@ -19,12 +19,12 @@ function main() {
   var bboxSet = document.getElementById("bboxSet");
   bboxSet.addEventListener("click", function(click) {
     var p1 = [
-      projection.lonToWebMercX( toRadians(westDeg.value) ),
-      projection.latToWebMercY( toRadians(northDeg.value) )
+      projection.lonToX( toRadians(westDeg.value) ),
+      projection.latToY( toRadians(northDeg.value) )
     ];
     var p2 = [
-      projection.lonToWebMercX( toRadians(eastDeg.value) ),
-      projection.latToWebMercY( toRadians(southDeg.value) )
+      projection.lonToX( toRadians(eastDeg.value) ),
+      projection.latToY( toRadians(southDeg.value) )
     ];
     map.fitBoundingBox(p1, p2);
   }, false);
