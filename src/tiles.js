@@ -12,10 +12,10 @@ function initTiles(tileAPI) {
 
   //function retrieve(tile, z, x, y) {
   function retrieve(tile, zxy) {
-    //getTileOrParent(tile, z, x, y, 0, 0, size);
+    tile.found = false;
     getTileOrParent(tile, zxy[0], zxy[1], zxy[2], 0, 0, size);
     // Return a flag indicating whether we have an image ready
-    return (tile.img && tile.img.complete && tile.img.naturalWidth !== 0);
+    return tile.found;
   }
 
   function getTileOrParent(
@@ -34,6 +34,7 @@ function initTiles(tileAPI) {
       tileObj.sx = sx;
       tileObj.sy = sy;
       tileObj.sw = sw;
+      tileObj.found = true;
       return;
     }
 
