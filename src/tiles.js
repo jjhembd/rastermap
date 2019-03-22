@@ -1,4 +1,4 @@
-function initTiles(tileAPI) {
+export function initTiles(tileAPI) {
   const size = tileAPI.tileSize;
 
   // Initialize the tiles object
@@ -10,11 +10,9 @@ function initTiles(tileAPI) {
     prune,
   };
 
-  //function retrieve(tile, z, x, y) {
   function retrieve(tile, zxy) {
     tile.found = false;
     getTileOrParent(tile, zxy[0], zxy[1], zxy[2], 0, 0, size);
-    // Return a flag indicating whether we have an image ready
     return tile.found;
   }
 
@@ -25,12 +23,11 @@ function initTiles(tileAPI) {
       ) {
 
     // Retrieve the specified tile from the tiles object
-    let tileID = tileAPI.getID(z, x, y);
-    let tile = tiles[tileID];
+    let id = tileAPI.getID(z, x, y);
 
     // If the tile exists and is ready, return it with cropping info
-    if (tile && tile.complete && tile.naturalWidth !== 0) {
-      tileObj.img = tile;
+    if (tiles[id] && tiles[id].complete && tiles[id].naturalWidth !== 0) {
+      tileObj.img = tiles[id];
       tileObj.sx = sx;
       tileObj.sy = sy;
       tileObj.sw = sw;
@@ -51,14 +48,13 @@ function initTiles(tileAPI) {
       getTileOrParent(tileObj, pz, px, py, psx, psy, psw); // recursive call!
     }
 
-    if (!tile) {  // Tile didn't exist. Create it and request image from API
-      tile = new Image();
-      tile.zoom = z;
-      tile.indx = x;
-      tile.indy = y;
-      tile.crossOrigin = "anonymous";
-      tile.src = tileAPI.getURL(tileID);
-      tiles[tileID] = tile;
+    if (!tiles[id]) {  // Tile didn't exist. Create it and request image from API
+      tiles[id] = new Image();
+      tiles[id].zoom = z;
+      tiles[id].indx = x;
+      tiles[id].indy = y;
+      tiles[id].crossOrigin = "anonymous";
+      tiles[id].src = tileAPI.getURL(id);
     }
 
     return;
@@ -78,5 +74,3 @@ function initTiles(tileAPI) {
   }
 
 }
-
-export { initTiles };

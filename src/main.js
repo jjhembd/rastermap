@@ -2,14 +2,12 @@
 
 import { initMap2D } from "./map2D.js";
 import { tileAPI } from "./mapbox-satellite.js";
-import { initMercator } from "./proj-mercator.js";
 
-function main() {
+export function main() {
   // Setup 2D map
   const display = document.getElementById("rasterCanvas").getContext("2d");
   const overlay = document.getElementById("vectorCanvas").getContext("2d");
-  const projection = initMercator();
-  const map = initMap2D(display, overlay, tileAPI, projection);
+  const map = initMap2D(display, overlay, tileAPI);
 
   // Handle a supplied bounding box
   var westDeg = document.getElementById("west");
@@ -18,14 +16,12 @@ function main() {
   var southDeg = document.getElementById("south");
   var bboxSet = document.getElementById("bboxSet");
   bboxSet.addEventListener("click", function(click) {
-    var p1 = [
-      projection.lonToX( toRadians(westDeg.value) ),
-      projection.latToY( toRadians(northDeg.value) )
-    ];
-    var p2 = [
-      projection.lonToX( toRadians(eastDeg.value) ),
-      projection.latToY( toRadians(southDeg.value) )
-    ];
+    var p1 = [];
+    map.projection.lonLatToXY( p1, 
+        [toRadians(westDeg.value), toRadians(northDeg.value)] );
+    var p2 = [];
+    map.projection.lonLatToXY( p2,
+        [toRadians(eastDeg.value), toRadians(southDeg.value)] );
     map.fitBoundingBox(p1, p2);
   }, false);
 
@@ -64,5 +60,3 @@ function main() {
     requestAnimationFrame(checkRender);
   }
 }
-
-export { main };

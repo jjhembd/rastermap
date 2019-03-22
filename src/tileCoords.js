@@ -1,16 +1,10 @@
-function initTileCoords( tileAPI, projection ) {
+export function initTileCoords( tileAPI ) {
   // Store parameters of the map tiles API
   const tileSize = tileAPI.tileSize;
   const maxZoom = tileAPI.maxZoom;
 
-  // Dimensions of our working set of tiles
-  const gridSize = Object.freeze({ x: 4, y: 3 });
-
-  // Working variables to track camera position within the texture
-  const camMapPos = new Float32Array(4); // [x, y, xscale, yscale]
-
   // Initialize position and zoom of the map. All are integers
-  var zoom = Math.floor( Math.log2( Math.max(gridSize.x, gridSize.y) ) );
+  var zoom = Math.floor( Math.log2( Math.max(tileAPI.nx, tileAPI.ny) ) );
   var xTile0 = 0;
   var yTile0 = 0;
 
@@ -23,20 +17,19 @@ function initTileCoords( tileAPI, projection ) {
     nTiles = 2 ** zoom;
     origin[0] = xTile0 / nTiles;
     origin[1] = yTile0 / nTiles;
-    scale[0] = nTiles / gridSize.x; // Problematic if < 1 ?
-    scale[1] = nTiles / gridSize.y;
+    scale[0] = nTiles / tileAPI.nx; // Problematic if < 1 ?
+    scale[1] = nTiles / tileAPI.ny;
   }
   // Initialize transform
   updateTransform();
 
   return {
-    // Info about current camera position and map state
-    camMapPos,
+    // Info about current map state
+    getScale: function(i) { return scale[i]; },
     getZXY,
-    gridSize,
 
     // Methods to compute positions within current map
-    updateCamMapPos,
+    toLocal,
     xyToMapPixels,
     tileDistance,
 
@@ -52,38 +45,14 @@ function initTileCoords( tileAPI, projection ) {
     zxy[0] = zoom;
     zxy[1] = wrap(xTile0 + ix, nTiles);
     zxy[2] = wrap(yTile0 + iy, nTiles);
-  }
-
-  function updateCamMapPos( position ) {
-    // Input position is a pointer to a 3-element array, containing the
-    // longitude, latitude, and altitude of the camera
-    
-    // Project lon/lat to global x/y  TODO: move this out?
-    const projected = [0,0];
-    projection.lonLatToXY(projected, position);
-
-    // Transform global to local map coordinates
-    toLocal(camMapPos, projected);
-
-    // Add scaling information
-    camMapPos[2] = scale[0];
-    camMapPos[3] = scale[1];
-
-    // Set projection-related parameters for shader  TODO: move this out
-    projection.setShaderParams(position[1]);
-
     return;
   }
 
-  function xyToMapPixels(webMercX, webMercY) {
-    // Convert input point to fractional number of tiles from xTile0, yTile0
-    const local = [0,0];
-    // TODO: input as vector
-    toLocal(local, [webMercX, webMercY]);
-    local[0] *= gridSize.x * tileSize;
-    local[1] *= gridSize.y * tileSize;
-
-    return local;
+  function xyToMapPixels(local, global) {
+    toLocal(local, global);
+    local[0] *= tileAPI.nx * tileSize;
+    local[1] *= tileAPI.ny * tileSize;
+    return;
   }
 
   function tileDistance(z, x, y) {
@@ -100,9 +69,9 @@ function initTileCoords( tileAPI, projection ) {
     }
     var map = {
       x1: xTile0,
-      x2: xTile0 + gridSize.x + 1, // Note: may extend across antimeridian!
+      x2: xTile0 + tileAPI.nx + 1, // Note: may extend across antimeridian!
       y1: yTile0,
-      y2: yTile0 + gridSize.y + 1, // Note: may extend across a pole!
+      y2: yTile0 + tileAPI.ny + 1, // Note: may extend across a pole!
     };
 
     // Find horizontal distance between current tile and edges of current map
@@ -151,10 +120,11 @@ function initTileCoords( tileAPI, projection ) {
   }
 
   function fitBoundingBox(p1, p2) {
-    // Inputs p1, p2 are 2D arrays containing pairs of Web Mercator coordinates
+    // Inputs p1, p2 are 2D arrays containing pairs of X/Y coordinates
     // in the range [0,1] X [0,1] with (0,0) at the top left corner.
     // ASSUMES p2 is SouthEast of p1 although we may have p2[0] < p1[0]
     // if the box crosses the antimeridian (longitude = +/- PI)
+    // TODO: update comment, verify code for non-Mercator projections
 
     // Remember old values
     var oldZ = zoom;
@@ -176,8 +146,8 @@ function initTileCoords( tileAPI, projection ) {
     //  (gridSize? - 1) / 2 ** zoom > boxSize in both X and Y.
     // BUT we need the minimum zoom to have at least gridSize, i.e.,
     // min zoom = log2(gridSize).
-    var zoomX = Math.log2( Math.max(gridSize.x, (gridSize.x - 1) / boxWidth) );
-    var zoomY = Math.log2( Math.max(gridSize.y, (gridSize.y - 1) / boxHeight) );
+    var zoomX = Math.log2( Math.max(tileAPI.nx, (tileAPI.nx - 1) / boxWidth) );
+    var zoomY = Math.log2( Math.max(tileAPI.ny, (tileAPI.ny - 1) / boxHeight) );
     zoom = Math.floor( Math.min(zoomX, zoomY) );
     zoom = Math.min(zoom, maxZoom);
     nTiles = 2 ** zoom; // Number of tiles at this zoom level
@@ -189,11 +159,11 @@ function initTileCoords( tileAPI, projection ) {
 
     // 3. Find the integer tile numbers of the top left corner of the rectangle
     //    whose center will be within 1/2 tile of (centerX, centerY)
-    xTile0 = Math.round(centerX - gridSize.x / 2.0);
+    xTile0 = Math.round(centerX - tileAPI.nx / 2.0);
     xTile0 = wrap(xTile0, nTiles); // in case we crossed the antimeridian
-    yTile0 = Math.round(centerY - gridSize.y / 2.0);
+    yTile0 = Math.round(centerY - tileAPI.ny / 2.0);
     // Don't let box cross poles
-    yTile0 = Math.min(Math.max(0, yTile0), nTiles - gridSize.y);
+    yTile0 = Math.min(Math.max(0, yTile0), nTiles - tileAPI.ny);
 
     // Return a flag indicating whether map parameters were updated
     if (zoom !== oldZ || xTile0 !== oldX || yTile0 !== oldY) {
@@ -210,11 +180,41 @@ function initTileCoords( tileAPI, projection ) {
     return (dx || dy);
   }
 
+  function move(dz, dx, dy) {
+    // WARNING: Rounds dz, dx, dy to the nearest integer!
+    var dzi = Math.min(Math.max(0 - zoom, Math.round(dz)), maxZoom - zoom);
+    var dxi = Math.round(dx);
+    var dyi = Math.round(dy);
+
+    var changed = (dzi || dxi || dyi);
+
+    // Panning first
+    xTile0 = wrap(xTile0 + dxi, nTiles);
+    yTile0 = wrap(yTile0 + dyi, nTiles);
+
+    // Zoom
+    while (dzi > 0) {
+      zoom++;
+      xTile0 = Math.floor(2 * xTile0 + tileAPI.nx / 2.0);
+      yTile0 = Math.floor(2 * yTile0 + tileAPI.ny / 2.0);
+      dzi--;
+    }
+    while (dzi < 0) {
+      zoom--;
+      xTile0 = wrap( Math.ceil( (xTile0 - tileAPI.nx / 2.0) / 2 ), nTiles );
+      yTile0 = wrap( Math.ceil( (yTile0 - tileAPI.ny / 2.0) / 2 ), nTiles );
+      dzi++;
+    }
+
+    updateTransform();
+    return changed;
+  }
+
   function zoomIn() {
     if (zoom > maxZoom - 1) return false;
     zoom++;
-    xTile0 = Math.floor(2 * xTile0 + gridSize.x / 2.0);
-    yTile0 = Math.floor(2 * yTile0 + gridSize.y / 2.0);
+    xTile0 = Math.floor(2 * xTile0 + tileAPI.nx / 2.0);
+    yTile0 = Math.floor(2 * yTile0 + tileAPI.ny / 2.0);
     updateTransform();
     return true;
   }
@@ -222,8 +222,8 @@ function initTileCoords( tileAPI, projection ) {
   function zoomOut() {
     if (zoom < 1) return false;
     zoom--;
-    xTile0 = Math.ceil( (xTile0 - gridSize.x / 2.0) / 2 );
-    yTile0 = Math.ceil( (yTile0 - gridSize.y / 2.0) / 2 );
+    xTile0 = Math.ceil( (xTile0 - tileAPI.nx / 2.0) / 2 );
+    yTile0 = Math.ceil( (yTile0 - tileAPI.ny / 2.0) / 2 );
     updateTransform();
     return true;
   }
@@ -235,5 +235,3 @@ function wrap(x, xmax) {
   while (x >= xmax) x -= xmax;
   return x;
 }
-
-export { initTileCoords };
