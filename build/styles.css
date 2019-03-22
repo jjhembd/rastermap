@@ -45,3 +45,8 @@ canvas {
   right: 0;
   z-index: 3;
 }
+#completion {
+  display: inline-block;
+  width: 40ch;
+  text-align: left;
+}

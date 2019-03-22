@@ -2,11 +2,12 @@ import { initTileCoords } from "./tileCoords.js";
 import { initTiles } from "./tiles.js";
 
 export function initMap2D(display, overlay, tileAPI) {
-  // Setup tile coordinates
+  // Setup tile coordinates and tile cache
   const coords = initTileCoords( tileAPI );
-  const size = tileAPI.tileSize;
+  const tiles = initTiles( tileAPI );
 
   // Set canvas drawing buffer size equal to the CSS displayed size
+  const size = tileAPI.tileSize;
   const mapWidth = tileAPI.nx * size;
   const mapHeight = tileAPI.ny * size;
   display.canvas.width = mapWidth;
@@ -15,17 +16,10 @@ export function initMap2D(display, overlay, tileAPI) {
   overlay.canvas.height = mapHeight;
   console.log("display size: " + mapWidth + "x" + mapHeight);
 
-  const tiles = initTiles(tileAPI);
-
   // Initialize tracking object, to check if map needs to be updated
   const dz = [];
   for (let iy = 0; iy < tileAPI.ny; iy++) {
     dz[iy] = [];
-    for (let ix = 0; ix < tileAPI.nx; ix++) {
-      // dz indicates the difference between the requested zoom level
-      // and the zoom level actually written to this tile
-      dz[iy][ix] = tileAPI.maxZoom;
-    }
   }
   const oneTileComplete = 1. / tileAPI.nx / tileAPI.ny;
   const mapStatus = {
@@ -35,12 +29,38 @@ export function initMap2D(display, overlay, tileAPI) {
       this.complete = 0.0;
       for (let iy = 0; iy < tileAPI.ny; iy++) {
         for (let ix = 0; ix < tileAPI.nx; ix++) {
+          // dz indicates the difference between the requested zoom level
+          // and the zoom level actually written to this tile
           dz[iy][ix] = tileAPI.maxZoom;
         }
       }
       return;
     },
   }
+  mapStatus.reset(); // Initializes dz
+
+  // Return methods for drawing a 2D map
+  return {
+    drawTiles,
+    loaded: function() {
+      return mapStatus.complete;
+    },
+    move: function(dz, dx, dy) {
+      var changed = coords.move(dz, dx, dy);
+      if (changed) reset();
+    },
+    fitBoundingBox: function(p1, p2) {
+      var changed = coords.fitBoundingBox(p1, p2);
+      if (changed) reset();
+    },
+    getScale: coords.getScale,
+    projection: tileAPI.projection,
+    lonLatToLocalXY: function(local, geodetic) {
+      tileAPI.projection.lonLatToXY(local, geodetic);
+      coords.toLocal(local, local);
+      return;
+    },
+  };
 
   function drawTiles() {
     // Quick exit if map is already complete.
@@ -82,33 +102,6 @@ export function initMap2D(display, overlay, tileAPI) {
     tiles.prune(coords.tileDistance, 3.5);
 
     return updated;
-  }
-
-  // Return methods for drawing a 2D map
-  return {
-    move,
-    fitBoundingBox,
-    drawTiles,
-    loaded: function() {
-      return mapStatus.complete;
-    },
-    projection: tileAPI.projection,
-    lonLatToLocalXY: function(local, geodetic) {
-      tileAPI.projection.lonLatToXY(local, geodetic);
-      coords.toLocal(local, local);
-      return;
-    },
-    getScale: coords.getScale,
-  };
-
-  function move(dz, dx, dy) {
-    var changed = coords.move(dz, dx, dy);
-    if (changed) reset();
-  }
-
-  function fitBoundingBox(p1, p2) {
-    var changed = coords.fitBoundingBox(p1, p2);
-    if (changed) reset();
   }
 
   function reset() {
