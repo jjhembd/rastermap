@@ -1,7 +1,4 @@
 export function initTileCoords( tileAPI ) {
-  // Store parameters of the map tiles API
-  const tileSize = tileAPI.tileSize;
-  const maxZoom = tileAPI.maxZoom;
 
   // Initialize position and zoom of the map. All are integers
   var zoom = Math.floor( Math.log2( Math.max(tileAPI.nx, tileAPI.ny) ) );
@@ -35,9 +32,7 @@ export function initTileCoords( tileAPI ) {
 
     // Methods to update map state
     fitBoundingBox,
-    pan,
-    zoomIn,
-    zoomOut,
+    move,
   };
 
   function getZXY(zxy, ix, iy) {
@@ -50,8 +45,8 @@ export function initTileCoords( tileAPI ) {
 
   function xyToMapPixels(local, global) {
     toLocal(local, global);
-    local[0] *= tileAPI.nx * tileSize;
-    local[1] *= tileAPI.ny * tileSize;
+    local[0] *= tileAPI.nx * tileAPI.tileSize;
+    local[1] *= tileAPI.ny * tileAPI.tileSize;
     return;
   }
 
@@ -149,7 +144,7 @@ export function initTileCoords( tileAPI ) {
     var zoomX = Math.log2( Math.max(tileAPI.nx, (tileAPI.nx - 1) / boxWidth) );
     var zoomY = Math.log2( Math.max(tileAPI.ny, (tileAPI.ny - 1) / boxHeight) );
     zoom = Math.floor( Math.min(zoomX, zoomY) );
-    zoom = Math.min(zoom, maxZoom);
+    zoom = Math.min(zoom, tileAPI.maxZoom);
     nTiles = 2 ** zoom; // Number of tiles at this zoom level
 
     // 2. Compute the tile indices of the center of the box
@@ -173,18 +168,14 @@ export function initTileCoords( tileAPI ) {
     return false;
   }
 
-  function pan(dx, dy) {
-    xTile0 = wrap(xTile0 + dx, nTiles);
-    yTile0 = wrap(yTile0 + dy, nTiles);
-    updateTransform();
-    return (dx || dy);
-  }
-
   function move(dz, dx, dy) {
     // WARNING: Rounds dz, dx, dy to the nearest integer!
-    var dzi = Math.min(Math.max(0 - zoom, Math.round(dz)), maxZoom - zoom);
+    var dzi = Math.round(dz);
     var dxi = Math.round(dx);
     var dyi = Math.round(dy);
+
+    // Don't zoom beyond the limits of the API
+    dzi = Math.min(Math.max(0 - zoom, dzi), tileAPI.maxZoom - zoom);
 
     var changed = (dzi || dxi || dyi);
 
@@ -208,24 +199,6 @@ export function initTileCoords( tileAPI ) {
 
     updateTransform();
     return changed;
-  }
-
-  function zoomIn() {
-    if (zoom > maxZoom - 1) return false;
-    zoom++;
-    xTile0 = Math.floor(2 * xTile0 + tileAPI.nx / 2.0);
-    yTile0 = Math.floor(2 * yTile0 + tileAPI.ny / 2.0);
-    updateTransform();
-    return true;
-  }
-
-  function zoomOut() {
-    if (zoom < 1) return false;
-    zoom--;
-    xTile0 = Math.ceil( (xTile0 - tileAPI.nx / 2.0) / 2 );
-    yTile0 = Math.ceil( (yTile0 - tileAPI.ny / 2.0) / 2 );
-    updateTransform();
-    return true;
   }
 
 }

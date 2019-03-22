@@ -31,19 +31,19 @@ export function main() {
 
   // Setup panning controls
   var up = document.getElementById("up");
-  up.addEventListener("click", function(click) { map.pan(0, -1); }, false);
+  up.addEventListener("click", function(click) { map.move(0, 0, -1); }, false);
   var down = document.getElementById("down");
-  down.addEventListener("click", function(click) { map.pan(0, 1); }, false);
+  down.addEventListener("click", function(click) { map.move(0, 0, 1); }, false);
   var left = document.getElementById("left");
-  left.addEventListener("click", function(click) { map.pan(-1, 0); }, false);
+  left.addEventListener("click", function(click) { map.move(0, -1, 0); }, false);
   var right = document.getElementById("right");
-  right.addEventListener("click", function(click) { map.pan(1, 0); }, false);
+  right.addEventListener("click", function(click) { map.move(0, 1, 0); }, false);
 
   // Setup zoom controls
   var zoomIn = document.getElementById("zoomIn");
-  zoomIn.addEventListener("click", function(click) { map.zoomIn(); }, false);
+  zoomIn.addEventListener("click", function(click) { map.move(1, 0, 0); }, false);
   var zoomOut = document.getElementById("zoomOut");
-  zoomOut.addEventListener("click", function(click) { map.zoomOut(); }, false);
+  zoomOut.addEventListener("click", function(click) { map.move(-1, 0, 0); }, false);
 
   // Track loading status
   var loaded = document.getElementById("completion");

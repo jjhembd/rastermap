@@ -86,9 +86,7 @@ export function initMap2D(display, overlay, tileAPI) {
 
   // Return methods for drawing a 2D map
   return {
-    pan,
-    zoomIn,
-    zoomOut,
+    move,
     fitBoundingBox,
     drawTiles,
     loaded: function() {
@@ -103,18 +101,8 @@ export function initMap2D(display, overlay, tileAPI) {
     getScale: coords.getScale,
   };
 
-  function pan(dx, dy) {
-    var changed = coords.pan(dx, dy);
-    if (changed) reset();
-  }
-
-  function zoomIn() {
-    var changed = coords.zoomIn();
-    if (changed) reset();
-  }
-
-  function zoomOut() {
-    var changed = coords.zoomOut();
+  function move(dz, dx, dy) {
+    var changed = coords.move(dz, dx, dy);
     if (changed) reset();
   }
 
