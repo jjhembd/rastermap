@@ -1,10 +1,10 @@
 import { initTileCoords } from "./tileCoords.js";
-import { initTiles } from "./tiles.js";
+import { initTileCache } from "./tileCache.js";
 
 export function init(display, overlay, tileAPI) {
   // Setup tile coordinates and tile cache
   const coords = initTileCoords( tileAPI );
-  const tiles = initTiles( tileAPI );
+  const tiles = initTileCache( tileAPI );
 
   // Set canvas drawing buffer size equal to the CSS displayed size
   const size = tileAPI.tileSize;

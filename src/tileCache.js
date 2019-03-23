@@ -1,4 +1,4 @@
-export function initTiles(tileAPI) {
+export function initTileCache(tileAPI) {
   const size = tileAPI.tileSize;
 
   // Initialize the tiles object
