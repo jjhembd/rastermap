@@ -14,7 +14,8 @@ enables rastermap to supply images to animated apps. The returned image will
 always be correctly positioned. However, the image may be low resolution, if
 the higher-resolution tiles are not loaded yet.
 
-rastermap is like a [slippy map], only we make it *snappy*.
+rastermap is like a [slippy map], only we make it *snappy*. Check out our
+[rastermap example] and see for yourself!
 
 ## API
 ### Initialization
@@ -68,3 +69,4 @@ the canvas will be copied, in WebGL animation applications).
 
 [slippy map]: https://en.wikipedia.org/wiki/Tiled_web_map
 [CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
+[rastermap example]: https://jjhembd.github.io/rastermap/examples/index.html
