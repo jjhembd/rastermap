@@ -1,0 +1,14 @@
+{
+  "name": "rastermap",
+  "version": "1.0.0",
+  "description": "Simple tiled map on an HTML Canvas",
+  "main": "build/rastermap.bundle.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jeshurun Hembd",
+  "license": "MIT"
+}
