@@ -1,13 +1,13 @@
 'use strict';
 
-import { initMap2D } from "./map2D.js";
+import * as rasterMap from "../../build/rastermap.bundle.js";
 import { tileAPI } from "./mapbox-satellite.js";
 
 export function main() {
   // Setup 2D map
   const display = document.getElementById("rasterCanvas").getContext("2d");
   const overlay = document.getElementById("vectorCanvas").getContext("2d");
-  const map = initMap2D(display, overlay, tileAPI);
+  const map = rasterMap.init(display, overlay, tileAPI);
 
   // Handle a supplied bounding box
   var westDeg = document.getElementById("west");

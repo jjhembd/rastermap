@@ -1,8 +1,8 @@
 export default {
-  input: 'src/main.js',
+  input: 'src/rasterMap.js',
   output: {
-    file: 'build/js/main.min.js',
-    format: 'iife',
+    file: 'build/rastermap.bundle.js',
+    format: 'esm',
     name: 'rasterMap'
   }
 };

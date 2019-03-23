@@ -1,7 +1,7 @@
 import { initTileCoords } from "./tileCoords.js";
 import { initTiles } from "./tiles.js";
 
-export function initMap2D(display, overlay, tileAPI) {
+export function init(display, overlay, tileAPI) {
   // Setup tile coordinates and tile cache
   const coords = initTileCoords( tileAPI );
   const tiles = initTiles( tileAPI );
