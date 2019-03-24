@@ -1,7 +1,7 @@
-function initTileCoords( tileAPI ) {
+function initTileCoords( params ) {
 
   // Initialize position and zoom of the map. All are integers
-  var zoom = Math.floor( Math.log2( Math.max(tileAPI.nx, tileAPI.ny) ) );
+  var zoom = Math.floor( Math.log2( Math.max(params.nx, params.ny) ) );
   var xTile0 = 0;
   var yTile0 = 0;
 
@@ -14,8 +14,8 @@ function initTileCoords( tileAPI ) {
     nTiles = 2 ** zoom;
     origin[0] = xTile0 / nTiles;
     origin[1] = yTile0 / nTiles;
-    scale[0] = nTiles / tileAPI.nx; // Problematic if < 1 ?
-    scale[1] = nTiles / tileAPI.ny;
+    scale[0] = nTiles / params.nx; // Problematic if < 1 ?
+    scale[1] = nTiles / params.ny;
   }
   // Initialize transform
   updateTransform();
@@ -45,8 +45,8 @@ function initTileCoords( tileAPI ) {
 
   function xyToMapPixels(local, global) {
     toLocal(local, global);
-    local[0] *= tileAPI.nx * tileAPI.tileSize;
-    local[1] *= tileAPI.ny * tileAPI.tileSize;
+    local[0] *= params.nx * params.tileSize;
+    local[1] *= params.ny * params.tileSize;
     return;
   }
 
@@ -64,9 +64,9 @@ function initTileCoords( tileAPI ) {
     };
     var map = {
       x1: xTile0,
-      x2: xTile0 + tileAPI.nx + 1, // Note: may extend across antimeridian!
+      x2: xTile0 + params.nx + 1, // Note: may extend across antimeridian!
       y1: yTile0,
-      y2: yTile0 + tileAPI.ny + 1, // Note: may extend across a pole!
+      y2: yTile0 + params.ny + 1, // Note: may extend across a pole!
     };
 
     // Find horizontal distance between current tile and edges of current map
@@ -141,10 +141,10 @@ function initTileCoords( tileAPI ) {
     //  (gridSize? - 1) / 2 ** zoom > boxSize in both X and Y.
     // BUT we need the minimum zoom to have at least gridSize, i.e.,
     // min zoom = log2(gridSize).
-    var zoomX = Math.log2( Math.max(tileAPI.nx, (tileAPI.nx - 1) / boxWidth) );
-    var zoomY = Math.log2( Math.max(tileAPI.ny, (tileAPI.ny - 1) / boxHeight) );
+    var zoomX = Math.log2( Math.max(params.nx, (params.nx - 1) / boxWidth) );
+    var zoomY = Math.log2( Math.max(params.ny, (params.ny - 1) / boxHeight) );
     zoom = Math.floor( Math.min(zoomX, zoomY) );
-    zoom = Math.min(zoom, tileAPI.maxZoom);
+    zoom = Math.min(zoom, params.maxZoom);
     nTiles = 2 ** zoom; // Number of tiles at this zoom level
 
     // 2. Compute the tile indices of the center of the box
@@ -154,11 +154,11 @@ function initTileCoords( tileAPI ) {
 
     // 3. Find the integer tile numbers of the top left corner of the rectangle
     //    whose center will be within 1/2 tile of (centerX, centerY)
-    xTile0 = Math.round(centerX - tileAPI.nx / 2.0);
+    xTile0 = Math.round(centerX - params.nx / 2.0);
     xTile0 = wrap(xTile0, nTiles); // in case we crossed the antimeridian
-    yTile0 = Math.round(centerY - tileAPI.ny / 2.0);
+    yTile0 = Math.round(centerY - params.ny / 2.0);
     // Don't let box cross poles
-    yTile0 = Math.min(Math.max(0, yTile0), nTiles - tileAPI.ny);
+    yTile0 = Math.min(Math.max(0, yTile0), nTiles - params.ny);
 
     // Return a flag indicating whether map parameters were updated
     if (zoom !== oldZ || xTile0 !== oldX || yTile0 !== oldY) {
@@ -169,13 +169,12 @@ function initTileCoords( tileAPI ) {
   }
 
   function move(dz, dx, dy) {
-    // WARNING: Rounds dz, dx, dy to the nearest integer!
     var dzi = Math.round(dz);
     var dxi = Math.round(dx);
     var dyi = Math.round(dy);
 
     // Don't zoom beyond the limits of the API
-    dzi = Math.min(Math.max(0 - zoom, dzi), tileAPI.maxZoom - zoom);
+    dzi = Math.min(Math.max(0 - zoom, dzi), params.maxZoom - zoom);
 
     var changed = (dzi || dxi || dyi);
 
@@ -183,17 +182,16 @@ function initTileCoords( tileAPI ) {
     xTile0 = wrap(xTile0 + dxi, nTiles);
     yTile0 = wrap(yTile0 + dyi, nTiles);
 
-    // Zoom
-    while (dzi > 0) {
+    while (dzi > 0) {  // Zoom in
       zoom++;
-      xTile0 = Math.floor(2 * xTile0 + tileAPI.nx / 2.0);
-      yTile0 = Math.floor(2 * yTile0 + tileAPI.ny / 2.0);
+      xTile0 = Math.floor(2 * xTile0 + params.nx / 2.0);
+      yTile0 = Math.floor(2 * yTile0 + params.ny / 2.0);
       dzi--;
     }
-    while (dzi < 0) {
+    while (dzi < 0) {  // Zoom out
       zoom--;
-      xTile0 = wrap( Math.ceil( (xTile0 - tileAPI.nx / 2.0) / 2 ), nTiles );
-      yTile0 = wrap( Math.ceil( (yTile0 - tileAPI.ny / 2.0) / 2 ), nTiles );
+      xTile0 = wrap( Math.ceil( (xTile0 - params.nx / 2.0) / 2 ), nTiles );
+      yTile0 = wrap( Math.ceil( (yTile0 - params.ny / 2.0) / 2 ), nTiles );
       dzi++;
     }
 
@@ -209,7 +207,7 @@ function wrap(x, xmax) {
   return x;
 }
 
-function initTiles(tileAPI) {
+function initTileCache(tileAPI) {
   const size = tileAPI.tileSize;
 
   // Initialize the tiles object
@@ -286,37 +284,35 @@ function initTiles(tileAPI) {
 
 }
 
-function init(display, overlay, tileAPI) {
+function init(context, params) {
   // Setup tile coordinates and tile cache
-  const coords = initTileCoords( tileAPI );
-  const tiles = initTiles( tileAPI );
+  const coords = initTileCoords( params );
+  const tiles = initTileCache( params );
 
   // Set canvas drawing buffer size equal to the CSS displayed size
-  const size = tileAPI.tileSize;
-  const mapWidth = tileAPI.nx * size;
-  const mapHeight = tileAPI.ny * size;
-  display.canvas.width = mapWidth;
-  display.canvas.height = mapHeight;
-  overlay.canvas.width = mapWidth;
-  overlay.canvas.height = mapHeight;
-  console.log("display size: " + mapWidth + "x" + mapHeight);
+  const size = params.tileSize;
+  const mapWidth = params.nx * size;
+  const mapHeight = params.ny * size;
+  context.canvas.width = mapWidth;
+  context.canvas.height = mapHeight;
+  console.log("canvas size: " + mapWidth + "x" + mapHeight);
 
   // Initialize tracking object, to check if map needs to be updated
   const dz = [];
-  for (let iy = 0; iy < tileAPI.ny; iy++) {
+  for (let iy = 0; iy < params.ny; iy++) {
     dz[iy] = [];
   }
-  const oneTileComplete = 1. / tileAPI.nx / tileAPI.ny;
+  const oneTileComplete = 1. / params.nx / params.ny;
   const mapStatus = {
     complete: 0.0,
     dz,
     reset: function() {
       this.complete = 0.0;
-      for (let iy = 0; iy < tileAPI.ny; iy++) {
-        for (let ix = 0; ix < tileAPI.nx; ix++) {
+      for (let iy = 0; iy < params.ny; iy++) {
+        for (let ix = 0; ix < params.nx; ix++) {
           // dz indicates the difference between the requested zoom level
           // and the zoom level actually written to this tile
-          dz[iy][ix] = tileAPI.maxZoom;
+          dz[iy][ix] = params.maxZoom;
         }
       }
       return;
@@ -338,13 +334,8 @@ function init(display, overlay, tileAPI) {
       var changed = coords.fitBoundingBox(p1, p2);
       if (changed) reset();
     },
+    toLocal: coords.toLocal,
     getScale: coords.getScale,
-    projection: tileAPI.projection,
-    lonLatToLocalXY: function(local, geodetic) {
-      tileAPI.projection.lonLatToXY(local, geodetic);
-      coords.toLocal(local, local);
-      return;
-    },
   };
 
   function drawTiles() {
@@ -356,8 +347,8 @@ function init(display, overlay, tileAPI) {
     const zxy = [];
 
     // Loop over tiles in the map
-    for (let iy = 0; iy < tileAPI.ny; iy++) {
-      for (let ix = 0; ix < tileAPI.nx; ix++) {
+    for (let iy = 0; iy < params.ny; iy++) {
+      for (let ix = 0; ix < params.nx; ix++) {
         if (mapStatus.dz[iy][ix] === 0) continue; // This tile already done
 
         coords.getZXY(zxy, ix, iy);
@@ -366,7 +357,7 @@ function init(display, overlay, tileAPI) {
         var dzTmp = zxy[0] - tileObj.img.zoom;
         if (dzTmp == mapStatus.dz[iy][ix]) continue; // Tile already written
 
-        display.drawImage(
+        context.drawImage(
             tileObj.img,    // Image to read, and paint to the canvas
             tileObj.sx,     // First x-pixel in tile to read
             tileObj.sy,     // First y-pixel in tile to read
@@ -390,11 +381,8 @@ function init(display, overlay, tileAPI) {
   }
 
   function reset() {
-    // Reset map status
     mapStatus.reset();
-    // Clear canvases
-    display.clearRect(0, 0, mapWidth, mapHeight);
-    overlay.clearRect(0, 0, mapWidth, mapHeight);
+    context.clearRect(0, 0, mapWidth, mapHeight);
     return;
   }
 

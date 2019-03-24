@@ -1,12 +1,4 @@
-// NOTE: may be better to import a factory function?
-// Using this method, rollup leaves the private functions exposed...
-import * as mercator from "./proj-mercator.js";
-
-const params = {
-  // Map projection. Make sure to import the constructor for this projection.
-  // Must include methods "lonLatToXY" and "getShaderParams"
-  projection: mercator,
-
+export const params = Object.freeze({
   // Root URL and token for accessing the REST API
   baseURL: "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/",
   token: "pk.eyJ1IjoiamhlbWJkIiwiYSI6ImNqcHpueHpyZjBlMjAzeG9kNG9oNzI2NTYifQ.K7fqhk2Z2YZ8NIV94M-5nA",
@@ -30,7 +22,4 @@ const params = {
   getURL: function(id) {
     return this.baseURL + this.tileSize + id + "?access_token=" + this.token;
   },
-}
-
-// Export as read-only
-export const tileAPI = Object.freeze(params);
+});
