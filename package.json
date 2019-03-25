@@ -1,13 +1,15 @@
 {
   "name": "rastermap",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Simple tiled map on an HTML Canvas",
   "main": "build/rastermap.bundle.js",
-  "directories": {
-    "example": "examples"
-  },
+  "files": [
+    "build"
+  ],
+  "directories": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c"
   },
   "repository": {
     "type": "git",
