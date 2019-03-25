@@ -19,5 +19,8 @@
     "url": "https://github.com/jjhembd/rastermap/issues"
   },
   "author": "Jeshurun Hembd",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^1.7.3"
+  }
 }

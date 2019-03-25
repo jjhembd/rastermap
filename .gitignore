@@ -39,4 +39,4 @@ Thumbs.db
 # Other #
 ######################
 tiling.txt
-test/
+node_modules/
