@@ -53,6 +53,7 @@ export function init(context, params) {
     },
     toLocal: coords.toLocal,
     getScale: coords.getScale,
+    xyToMapPixels: coords.xyToMapPixels,
   };
 
   function drawTiles() {
