@@ -7,7 +7,8 @@ import * as projection from "./proj-mercator.js";
 export function main() {
   // Setup 2D map
   const display = document.getElementById("rasterCanvas").getContext("2d");
-  const map = rasterMap.init(display, params);
+  const overlay = document.getElementById("vectorCanvas").getContext("2d");
+  const map = rasterMap.init(params, display, overlay);
 
   // Handle a supplied bounding box
   var westDeg = document.getElementById("west");
