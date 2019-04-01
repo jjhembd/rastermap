@@ -1,5 +1,5 @@
 export default {
-  input: 'src/rasterMap.js',
+  input: 'src/main.js',
   output: {
     file: 'build/rastermap.bundle.js',
     format: 'esm',
