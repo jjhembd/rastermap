@@ -285,10 +285,12 @@ function initTileCache(tileAPI) {
 }
 
 function initMap(params, context, coords, tiles) {
-  // Resize canvases to fit the specified number of tiles
+  // Resize canvas to fit the specified number of tiles
   const size = params.tileSize;
   const mapWidth = params.nx * size;
   const mapHeight = params.ny * size;
+  context.canvas.width = mapWidth;
+  context.canvas.height = mapHeight;
 
   // Initialize tracking object, to check if map needs to be updated
   const dz = [];
@@ -368,63 +370,29 @@ function initMap(params, context, coords, tiles) {
   }
 }
 
-function init(params, context, overlay) {
-  // Check if we have valid canvas rendering contexts
-  var haveRaster = context instanceof CanvasRenderingContext2D;
-  if (!haveRaster) {
-    console.log("ERROR in rastermap.init: not a valid 2D rendering context!");
-    return false;
-  }
-  var haveVector = overlay instanceof CanvasRenderingContext2D;
+function initBoxQC(overlay, coords, width, height) {
 
   // Resize canvases to fit the specified number of tiles
-  const size = params.tileSize;
-  const mapWidth = params.nx * size;
-  const mapHeight = params.ny * size;
-  console.log("map size: " + mapWidth + "x" + mapHeight);
-  context.canvas.width = mapWidth;
-  context.canvas.height = mapHeight;
-  if (haveVector) {
-    overlay.canvas.width = mapWidth;
-    overlay.canvas.height = mapHeight;
-  }
-
-  // Setup tile coordinates and tile cache
-  const coords = initTileCoords( params );
-  const tiles = initTileCache( params );
-
-  // Initialize grid of rendered tiles
-  var map = initMap(params, context, coords, tiles);
+  overlay.canvas.width = width;
+  overlay.canvas.height = height;
 
   // Track status of bounding box for QC
-  var boxQC = [ [0,0], [0,0] ];
-  var pixQC = [ [0,0], [0,0] ];
+  const boxQC = [ [0,0], [0,0] ];
+  const pixQC = [ [0,0], [0,0] ];
 
-  // Return methods for drawing a 2D map
+  // Return methods for drawing the QC
   return {
-    drawTiles,
-    loaded: map.loaded,
-    move: function(dz, dx, dy) {
-      var changed = coords.move(dz, dx, dy);
-      if (changed) reset();
-    },
-    fitBoundingBox,
-    toLocal: coords.toLocal,
-    getScale: coords.getScale,
-    xyToMapPixels: coords.xyToMapPixels,
+    draw,
+    reset,
   };
 
-  function fitBoundingBox(p1, p2) {
-    var mapChanged = coords.fitBoundingBox(p1, p2);
-    if (mapChanged) reset();
-    if ( !haveVector ) return;
-
+  function draw(p1, p2, mapChanged) {
     // Check if bounding box changed since last call
     var boxChanged = updateBox(boxQC, [p1, p2]);
     if (!boxChanged && !mapChanged) return;
 
     // Special case: box moved but map didn't
-    if (!mapChanged) overlay.clearRect(0, 0, mapWidth, mapHeight);
+    if (!mapChanged) overlay.clearRect(0, 0, width, height);
 
     // Convert box to map pixels
     coords.xyToMapPixels( pixQC[0], boxQC[0] );
@@ -439,6 +407,8 @@ function init(params, context, overlay) {
         pixQC[1][0] - pixQC[0][0],
         pixQC[1][1] - pixQC[0][1]
         );
+
+    return;
   }
 
   function updateBox(bOld, bNew) {
@@ -458,23 +428,74 @@ function init(params, context, overlay) {
     return true;
   }
 
+  function reset() {
+    overlay.clearRect(0, 0, width, height);
+    boxQC[0][0] = 0;
+    boxQC[0][1] = 0;
+    boxQC[1][0] = 0;
+    boxQC[1][1] = 0;
+    return;
+  }
+}
+
+function init(params, context, overlay) {
+  // Check if we have valid canvas rendering contexts
+  var haveRaster = context instanceof CanvasRenderingContext2D;
+  if (!haveRaster) {
+    console.log("ERROR in rastermap.init: not a valid 2D rendering context!");
+    return false;
+  }
+  var haveVector = overlay instanceof CanvasRenderingContext2D;
+
+  // Compute pixel size of map
+  const mapWidth = params.nx * params.tileSize;
+  const mapHeight = params.ny * params.tileSize;
+  console.log("map size: " + mapWidth + "x" + mapHeight);
+
+  // Setup tile coordinates and tile cache
+  const coords = initTileCoords( params );
+  const tiles = initTileCache( params );
+
+  // Initialize grid of rendered tiles
+  const map = initMap(params, context, coords, tiles);
+
+  // Initialize bounding box QC overlay
+  var boxQC;
+  if (haveVector) {
+    boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
+  }
+
+  // Return methods for drawing a 2D map
+  return {
+    drawTiles,
+    loaded: map.loaded,
+    move: function(dz, dx, dy) {
+      var changed = coords.move(dz, dx, dy);
+      if (changed) reset();
+    },
+    fitBoundingBox,
+    toLocal: coords.toLocal,
+    getScale: coords.getScale,
+    xyToMapPixels: coords.xyToMapPixels,
+  };
+
+  function fitBoundingBox(p1, p2) {
+    var mapChanged = coords.fitBoundingBox(p1, p2);
+    if (mapChanged) reset();
+    if (haveVector) boxQC.draw(p1, p2, mapChanged);
+    return;
+  }
+
   function drawTiles() {
     var updated = map.drawTiles();
     // Clean up -- don't let images object get too big
     tiles.prune(coords.tileDistance, 3.5);
-
     return updated;
   }
 
   function reset() {
     map.reset();
-    if (haveVector) {
-      overlay.clearRect(0, 0, mapWidth, mapHeight);
-      boxQC[0][0] = 0;
-      boxQC[0][1] = 0;
-      boxQC[1][0] = 0;
-      boxQC[1][1] = 0;
-    }
+    if (haveVector) boxQC.reset();
     return;
   }
 }

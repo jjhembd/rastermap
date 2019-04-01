@@ -1,8 +1,10 @@
 export function initMap(params, context, coords, tiles) {
-  // Resize canvases to fit the specified number of tiles
+  // Resize canvas to fit the specified number of tiles
   const size = params.tileSize;
   const mapWidth = params.nx * size;
   const mapHeight = params.ny * size;
+  context.canvas.width = mapWidth;
+  context.canvas.height = mapHeight;
 
   // Initialize tracking object, to check if map needs to be updated
   const dz = [];
