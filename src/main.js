@@ -4,13 +4,12 @@ import { initMap } from "./map.js";
 import { initBoxQC } from "./boxqc.js";
 
 export function init(params, context, overlay) {
-  // Check if we have valid canvas rendering contexts
+  // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
     console.log("ERROR in rastermap.init: not a valid 2D rendering context!");
     return false;
   }
-  var haveVector = overlay instanceof CanvasRenderingContext2D;
 
   // Compute pixel size of map
   const mapWidth = params.nx * params.tileSize;
@@ -26,6 +25,7 @@ export function init(params, context, overlay) {
 
   // Initialize bounding box QC overlay
   var boxQC;
+  var haveVector = overlay instanceof CanvasRenderingContext2D;
   if (haveVector) {
     boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
   }

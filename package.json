@@ -1,15 +1,15 @@
 {
   "name": "rastermap",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Simple tiled map on an HTML Canvas",
-  "main": "build/rastermap.bundle.js",
+  "main": "dist/rastermap.bundle.js",
   "files": [
-    "build"
+    "dist"
   ],
   "directories": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rollup -c"
+    "build": "rollup -c build/rollup.config.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
   "author": "Jeshurun Hembd",
   "license": "MIT",
   "devDependencies": {
-    "rollup": "^1.7.3"
+    "rollup": "^1.7.3",
+    "rollup-plugin-node-resolve": "^4.2.1"
   }
 }
