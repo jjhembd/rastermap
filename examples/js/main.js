@@ -1,6 +1,6 @@
 'use strict';
 
-import * as rasterMap from "../../build/rastermap.bundle.js";
+import * as rasterMap from "../../dist/rastermap.bundle.js";
 import { params } from "./mapbox-satellite.js";
 import * as projection from "./proj-mercator.js";
 

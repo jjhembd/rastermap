@@ -442,8 +442,8 @@ function init(params, context, overlay) {
   // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
-    console.log("ERROR in rastermap.init: not a valid 2D rendering context!");
-    return false;
+    console.log("WARNING in rastermap.init: not a 2D rendering context!");
+    //return false;
   }
 
   // Compute pixel size of map
