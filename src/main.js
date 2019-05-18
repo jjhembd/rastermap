@@ -1,5 +1,6 @@
 import { initTileCoords } from "./coords.js";
 import { initTileCache } from "./cache.js";
+import { initRenderer } from "./renderer.js";
 import { initMap } from "./map.js";
 import { initBoxQC } from "./boxqc.js";
 
@@ -20,8 +21,10 @@ export function init(params, context, overlay) {
   const coords = initTileCoords( params );
   const tiles = initTileCache( params );
 
+  // Initialize renderer, to draw the tiles on the canvas
+  const renderer = initRenderer(context, params);
   // Initialize grid of rendered tiles
-  const map = initMap(params, context, coords, tiles);
+  const map = initMap(params, renderer, coords, tiles);
 
   // Initialize bounding box QC overlay
   var boxQC;
