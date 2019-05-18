@@ -1,8 +1,9 @@
-export default {
-  input: 'js/main.js',
+export default [{
+  input: 'raster/main.js',
+  plugins: [],
   output: {
-    file: 'js/main.min.js',
+    file: 'raster/main.min.js',
     format: 'iife',
     name: 'rasterMap'
   }
-};
+}];

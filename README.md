@@ -69,4 +69,4 @@ the canvas will be copied, in WebGL animation applications).
 
 [slippy map]: https://en.wikipedia.org/wiki/Tiled_web_map
 [CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
-[rastermap example]: https://jjhembd.github.io/rastermap/examples/index.html
+[rastermap example]: https://jjhembd.github.io/rastermap/examples/raster/index.html
