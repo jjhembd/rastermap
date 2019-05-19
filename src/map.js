@@ -34,7 +34,7 @@ export function initMap(params, renderer, coords, tiles) {
     if ( mapStatus.complete === 1.0 ) return false; // No change!
 
     var updated = false;
-    const tileObj = {};
+    const tilebox = {};
     const zxy = [];
 
     // Loop over tiles in the map
@@ -43,12 +43,12 @@ export function initMap(params, renderer, coords, tiles) {
         if (mapStatus.dz[iy][ix] === 0) continue; // This tile already done
 
         coords.getZXY(zxy, ix, iy);
-        var foundTile = tiles.retrieve( tileObj, zxy );
+        var foundTile = tiles.retrieve( tilebox, zxy );
         if (!foundTile) continue; // No image available for this tile
-        var dzTmp = zxy[0] - tileObj.img.zoom;
+        var dzTmp = zxy[0] - tilebox.tile.z;
         if (dzTmp == mapStatus.dz[iy][ix]) continue; // Tile already written
 
-        renderer.draw(tileObj, ix, iy);
+        renderer.draw(tilebox, ix, iy);
         updated = true;
 
         if (dzTmp == 0) mapStatus.complete += oneTileComplete;

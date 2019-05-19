@@ -1,4 +1,4 @@
-export function initTileCache(tileAPI) {
+export function initTileCache(tileAPI, tileFactory) {
   const size = tileAPI.tileSize;
 
   // Initialize the tiles object
@@ -10,14 +10,14 @@ export function initTileCache(tileAPI) {
     prune,
   };
 
-  function retrieve(tile, zxy) {
-    tile.found = false;
-    getTileOrParent(tile, zxy[0], zxy[1], zxy[2], 0, 0, size);
-    return tile.found;
+  function retrieve(tilebox, zxy) {
+    tilebox.full = false;
+    getTileOrParent(tilebox, zxy[0], zxy[1], zxy[2], 0, 0, size);
+    return tilebox.full;
   }
 
   function getTileOrParent(
-      tileObj,     // Returned tile object
+      tilebox,     // Returned tile object
       z, x, y,     // Coordinates of the requested tile
       sx, sy, sw   // Cropping parameters--which part of the tile to use
       ) {
@@ -26,12 +26,12 @@ export function initTileCache(tileAPI) {
     let id = tileAPI.getID(z, x, y);
 
     // If the tile exists and is ready, return it with cropping info
-    if (tiles[id] && tiles[id].complete && tiles[id].naturalWidth !== 0) {
-      tileObj.img = tiles[id];
-      tileObj.sx = sx;
-      tileObj.sy = sy;
-      tileObj.sw = sw;
-      tileObj.found = true;
+    if (tiles[id] && tiles[id].ready) {
+      tilebox.tile = tiles[id];
+      tilebox.sx = sx;
+      tilebox.sy = sy;
+      tilebox.sw = sw;
+      tilebox.full = true;
       return;
     }
 
@@ -45,17 +45,13 @@ export function initTileCache(tileAPI) {
       let psy = sy / 2 + (y / 2 - py) * size;
       let psw = sw / 2;
 
-      getTileOrParent(tileObj, pz, px, py, psx, psy, psw); // recursive call!
+      getTileOrParent(tilebox, pz, px, py, psx, psy, psw); // recursive call!
     }
 
-    if (!tiles[id]) {  // Tile didn't exist. Create it and request image from API
-      tiles[id] = new Image();
-      tiles[id].zoom = z;
-      tiles[id].indx = x;
-      tiles[id].indy = y;
-      tiles[id].crossOrigin = "anonymous";
-      tiles[id].src = tileAPI.getURL(id);
-    }
+    // If the requested tile didn't exist, we need to order it from the factory
+    // NOTE: orders are placed AFTER the recursive call for the parent tile,
+    // so missing parents will be ordered first
+    if (!tiles[id]) tiles[id] = tileFactory(z, x, y);
 
     return;
   }
@@ -66,11 +62,10 @@ export function initTileCache(tileAPI) {
     for ( let id in tiles ) {
       let distance = metric(tiles[id].zoom, tiles[id].indx, tiles[id].indy);
       if (distance >= threshold) {
-        tiles[id].src = ""; // Cancel any outstanding request (is it necessary?)
+        tiles[id].data.src = ""; // Cancel any outstanding request (is it necessary?)
         delete tiles[id];
       }
     }
     return;
   }
-
 }

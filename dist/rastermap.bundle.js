@@ -207,7 +207,36 @@ function wrap(x, xmax) {
   return x;
 }
 
-function initTileCache(tileAPI) {
+function initTileFactory(tileAPI) {
+  // This closure just stores the tileAPI for use in the returned method
+
+  function orderTile(z, x, y) {
+    // Declare main tile object and properties
+    const tile = {
+      z, x, y,
+      ready: false,
+    };
+
+    // Setup object for data request
+    const data = new Image();
+    data.onload = () => {
+      tile.ready = (data.complete && data.naturalWidth !== 0);
+    };
+    //data.onerror = () => {// delete tile?}
+
+    // Submit request
+    data.crossOrigin = "anonymous";
+    data.src = tileAPI.getURL( tileAPI.getID(z, x, y) );
+
+    // Add to the tile object and return
+    tile.data = data;
+    return tile;
+  }
+
+  return orderTile;
+}
+
+function initTileCache(tileAPI, tileFactory) {
   const size = tileAPI.tileSize;
 
   // Initialize the tiles object
@@ -219,14 +248,14 @@ function initTileCache(tileAPI) {
     prune,
   };
 
-  function retrieve(tile, zxy) {
-    tile.found = false;
-    getTileOrParent(tile, zxy[0], zxy[1], zxy[2], 0, 0, size);
-    return tile.found;
+  function retrieve(tilebox, zxy) {
+    tilebox.full = false;
+    getTileOrParent(tilebox, zxy[0], zxy[1], zxy[2], 0, 0, size);
+    return tilebox.full;
   }
 
   function getTileOrParent(
-      tileObj,     // Returned tile object
+      tilebox,     // Returned tile object
       z, x, y,     // Coordinates of the requested tile
       sx, sy, sw   // Cropping parameters--which part of the tile to use
       ) {
@@ -235,12 +264,12 @@ function initTileCache(tileAPI) {
     let id = tileAPI.getID(z, x, y);
 
     // If the tile exists and is ready, return it with cropping info
-    if (tiles[id] && tiles[id].complete && tiles[id].naturalWidth !== 0) {
-      tileObj.img = tiles[id];
-      tileObj.sx = sx;
-      tileObj.sy = sy;
-      tileObj.sw = sw;
-      tileObj.found = true;
+    if (tiles[id] && tiles[id].ready) {
+      tilebox.tile = tiles[id];
+      tilebox.sx = sx;
+      tilebox.sy = sy;
+      tilebox.sw = sw;
+      tilebox.full = true;
       return;
     }
 
@@ -254,17 +283,13 @@ function initTileCache(tileAPI) {
       let psy = sy / 2 + (y / 2 - py) * size;
       let psw = sw / 2;
 
-      getTileOrParent(tileObj, pz, px, py, psx, psy, psw); // recursive call!
+      getTileOrParent(tilebox, pz, px, py, psx, psy, psw); // recursive call!
     }
 
-    if (!tiles[id]) {  // Tile didn't exist. Create it and request image from API
-      tiles[id] = new Image();
-      tiles[id].zoom = z;
-      tiles[id].indx = x;
-      tiles[id].indy = y;
-      tiles[id].crossOrigin = "anonymous";
-      tiles[id].src = tileAPI.getURL(id);
-    }
+    // If the requested tile didn't exist, we need to order it from the factory
+    // NOTE: orders are placed AFTER the recursive call for the parent tile,
+    // so missing parents will be ordered first
+    if (!tiles[id]) tiles[id] = tileFactory(z, x, y);
 
     return;
   }
@@ -275,13 +300,12 @@ function initTileCache(tileAPI) {
     for ( let id in tiles ) {
       let distance = metric(tiles[id].zoom, tiles[id].indx, tiles[id].indy);
       if (distance >= threshold) {
-        tiles[id].src = ""; // Cancel any outstanding request (is it necessary?)
+        tiles[id].data.src = ""; // Cancel any outstanding request (is it necessary?)
         delete tiles[id];
       }
     }
     return;
   }
-
 }
 
 function initRenderer(context, params) {
@@ -302,17 +326,17 @@ function initRenderer(context, params) {
     return context.clearRect(0, 0, mapWidth, mapHeight);
   }
 
-  function draw(tileObj, ix, iy) {
+  function draw(tilebox, ix, iy) {
     context.drawImage(
-        tileObj.img,    // Image to read, and paint to the canvas
-        tileObj.sx,     // First x-pixel in tile to read
-        tileObj.sy,     // First y-pixel in tile to read
-        tileObj.sw,     // Number of pixels to read in x
-        tileObj.sw,     // Number of pixels to read in y
-        ix * size,      // First x-pixel in canvas to paint
-        iy * size,      // First y-pixel in canvas to paint
-        size,           // Number of pixels to paint in x
-        size            // Number of pixels to paint in y
+        tilebox.tile.data, // Image to read, and paint to the canvas
+        tilebox.sx,        // First x-pixel in tile to read
+        tilebox.sy,        // First y-pixel in tile to read
+        tilebox.sw,        // Number of pixels to read in x
+        tilebox.sw,        // Number of pixels to read in y
+        ix * size,         // First x-pixel in canvas to paint
+        iy * size,         // First y-pixel in canvas to paint
+        size,              // Number of pixels to paint in x
+        size               // Number of pixels to paint in y
         );
     return;
   }
@@ -354,7 +378,7 @@ function initMap(params, renderer, coords, tiles) {
     if ( mapStatus.complete === 1.0 ) return false; // No change!
 
     var updated = false;
-    const tileObj = {};
+    const tilebox = {};
     const zxy = [];
 
     // Loop over tiles in the map
@@ -363,12 +387,12 @@ function initMap(params, renderer, coords, tiles) {
         if (mapStatus.dz[iy][ix] === 0) continue; // This tile already done
 
         coords.getZXY(zxy, ix, iy);
-        var foundTile = tiles.retrieve( tileObj, zxy );
+        var foundTile = tiles.retrieve( tilebox, zxy );
         if (!foundTile) continue; // No image available for this tile
-        var dzTmp = zxy[0] - tileObj.img.zoom;
+        var dzTmp = zxy[0] - tilebox.tile.z;
         if (dzTmp == mapStatus.dz[iy][ix]) continue; // Tile already written
 
-        renderer.draw(tileObj, ix, iy);
+        renderer.draw(tilebox, ix, iy);
         updated = true;
 
         if (dzTmp == 0) mapStatus.complete += oneTileComplete;
@@ -466,9 +490,12 @@ function init(params, context, overlay) {
   const mapHeight = params.ny * params.tileSize;
   console.log("map size: " + mapWidth + "x" + mapHeight);
 
-  // Setup tile coordinates and tile cache
+  // Setup tile coordinates and associated methods
   const coords = initTileCoords( params );
-  const tiles = initTileCache( params );
+
+  // Initialize a tile factory function and a cache of loaded tiles
+  const tileFactory = initTileFactory( params );
+  const tiles = initTileCache( params, tileFactory );
 
   // Initialize renderer, to draw the tiles on the canvas
   const renderer = initRenderer(context, params);

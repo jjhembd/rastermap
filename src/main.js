@@ -1,4 +1,5 @@
 import { initTileCoords } from "./coords.js";
+import { initTileFactory } from "./tile.js";
 import { initTileCache } from "./cache.js";
 import { initRenderer } from "./renderer.js";
 import { initMap } from "./map.js";
@@ -17,9 +18,12 @@ export function init(params, context, overlay) {
   const mapHeight = params.ny * params.tileSize;
   console.log("map size: " + mapWidth + "x" + mapHeight);
 
-  // Setup tile coordinates and tile cache
+  // Setup tile coordinates and associated methods
   const coords = initTileCoords( params );
-  const tiles = initTileCache( params );
+
+  // Initialize a tile factory function and a cache of loaded tiles
+  const tileFactory = initTileFactory( params );
+  const tiles = initTileCache( params, tileFactory );
 
   // Initialize renderer, to draw the tiles on the canvas
   const renderer = initRenderer(context, params);
