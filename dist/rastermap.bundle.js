@@ -217,16 +217,21 @@ function initTileFactory(tileAPI) {
       ready: false,
     };
 
-    // Setup object for data request
+    // Request the data
     const data = new Image();
-    data.onload = () => {
-      tile.ready = (data.complete && data.naturalWidth !== 0);
-    };
-    //data.onerror = () => {// delete tile?}
-
-    // Submit request
+    data.onerror = requestError;
+    data.onload = checkData;
     data.crossOrigin = "anonymous";
     data.src = tileAPI.getURL( tileAPI.getID(z, x, y) );
+
+    function checkData() {
+      tile.ready = (data.complete && data.naturalWidth !== 0);
+    }
+
+    function requestError(err) {
+      console.log("Request error in orderTile: " + err);
+      // delete this tile? Or flag it for reloading?
+    }
 
     // Add to the tile object and return
     tile.data = data;
@@ -261,7 +266,7 @@ function initTileCache(tileAPI, tileFactory) {
       ) {
 
     // Retrieve the specified tile from the tiles object
-    let id = tileAPI.getID(z, x, y);
+    let id = z + "/" + x + "/" + y; //tileAPI.getID(z, x, y);
 
     // If the tile exists and is ready, return it with cropping info
     if (tiles[id] && tiles[id].ready) {

@@ -19,11 +19,11 @@ export function init(params, context, overlay) {
   console.log("map size: " + mapWidth + "x" + mapHeight);
 
   // Setup tile coordinates and associated methods
-  const coords = initTileCoords( params );
+  const coords = initTileCoords(params);
 
   // Initialize a tile factory function and a cache of loaded tiles
   const tileFactory = initTileFactory( params );
-  const tiles = initTileCache( params, tileFactory );
+  const tiles = initTileCache(params.tileSize, tileFactory);
 
   // Initialize renderer, to draw the tiles on the canvas
   const renderer = initRenderer(context, params);

@@ -8,16 +8,21 @@ export function initTileFactory(tileAPI) {
       ready: false,
     };
 
-    // Setup object for data request
+    // Request the data
     const data = new Image();
-    data.onload = () => {
-      tile.ready = (data.complete && data.naturalWidth !== 0);
-    }
-    //data.onerror = () => {// delete tile?}
-
-    // Submit request
+    data.onerror = requestError;
+    data.onload = checkData;
     data.crossOrigin = "anonymous";
     data.src = tileAPI.getURL( tileAPI.getID(z, x, y) );
+
+    function checkData() {
+      tile.ready = (data.complete && data.naturalWidth !== 0);
+    }
+
+    function requestError(err) {
+      console.log("Request error in orderTile: " + err);
+      // delete this tile? Or flag it for reloading?
+    }
 
     // Add to the tile object and return
     tile.data = data;

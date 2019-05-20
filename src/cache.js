@@ -1,6 +1,4 @@
-export function initTileCache(tileAPI, tileFactory) {
-  const size = tileAPI.tileSize;
-
+export function initTileCache(size, tileFactory) {
   // Initialize the tiles object
   const tiles = {};
 
@@ -23,7 +21,7 @@ export function initTileCache(tileAPI, tileFactory) {
       ) {
 
     // Retrieve the specified tile from the tiles object
-    let id = tileAPI.getID(z, x, y);
+    let id = z + "/" + x + "/" + y;
 
     // If the tile exists and is ready, return it with cropping info
     if (tiles[id] && tiles[id].ready) {
