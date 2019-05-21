@@ -2886,16 +2886,13 @@ function initVectorRenderer(context, params) {
   var vrender = init(size);
   var stylesLoaded = false;
 
-  // Get the style info
-  readJSON(params.styleURL(), loadStyles);
-
-  function loadStyles(err, styleDoc) {
-    if (err) return console.log(err);
+  function loadStyles(styleDoc) {
     vrender.setStyles(styleDoc);
     stylesLoaded = true;
   }
 
   return {
+    loadStyles,
     draw,
     clear,
   };
@@ -3090,6 +3087,15 @@ function init$1(params, context, overlay) {
 
   // Initialize grid of rendered tiles
   const map = initMap(params, renderer, coords, tiles);
+
+  // Load the style document
+  if (params.vector) readJSON(params.styleURL(), loadStyles);
+
+  function loadStyles(err, styleDoc) {
+    if (err) return console.log(err);
+    renderer.loadStyles(styleDoc);
+    return reset();
+  }
 
   // Initialize bounding box QC overlay
   var boxQC;

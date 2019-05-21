@@ -5,6 +5,7 @@ import { initTileCache } from "./cache.js";
 import { initRenderer } from "./renderer.js";
 import { initVectorRenderer } from "./vectorRenderer.js";
 import { initMap } from "./map.js";
+import { readJSON } from "./readVector.js";
 import { initBoxQC } from "./boxqc.js";
 
 export function init(params, context, overlay) {
@@ -37,6 +38,15 @@ export function init(params, context, overlay) {
 
   // Initialize grid of rendered tiles
   const map = initMap(params, renderer, coords, tiles);
+
+  // Load the style document
+  if (params.vector) readJSON(params.styleURL(), loadStyles);
+
+  function loadStyles(err, styleDoc) {
+    if (err) return console.log(err);
+    renderer.loadStyles(styleDoc);
+    return reset();
+  }
 
   // Initialize bounding box QC overlay
   var boxQC;

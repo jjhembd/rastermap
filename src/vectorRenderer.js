@@ -1,4 +1,3 @@
-import { readJSON } from "./readVector.js";
 import * as vectormap from 'vectormap';
 
 export function initVectorRenderer(context, params) {
@@ -14,16 +13,13 @@ export function initVectorRenderer(context, params) {
   var vrender = vectormap.init(size);
   var stylesLoaded = false;
 
-  // Get the style info
-  readJSON(params.styleURL(), loadStyles);
-
-  function loadStyles(err, styleDoc) {
-    if (err) return console.log(err);
+  function loadStyles(styleDoc) {
     vrender.setStyles(styleDoc);
     stylesLoaded = true;
   }
 
   return {
+    loadStyles,
     draw,
     clear,
   };
