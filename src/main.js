@@ -1,7 +1,9 @@
 import { initTileCoords } from "./coords.js";
 import { initTileFactory } from "./tile.js";
+import { initVectorTileFactory } from "./vectorTile.js";
 import { initTileCache } from "./cache.js";
 import { initRenderer } from "./renderer.js";
+import { initVectorRenderer } from "./vectorRenderer.js";
 import { initMap } from "./map.js";
 import { initBoxQC } from "./boxqc.js";
 
@@ -21,12 +23,18 @@ export function init(params, context, overlay) {
   // Setup tile coordinates and associated methods
   const coords = initTileCoords(params);
 
-  // Initialize a tile factory function and a cache of loaded tiles
-  const tileFactory = initTileFactory( params );
+  // Initialize tile factory and renderer
+  var tileFactory, renderer;
+  if (params.vector) {
+    tileFactory = initVectorTileFactory( params );
+    renderer = initVectorRenderer(context, params);
+  } else {
+    tileFactory = initTileFactory( params );
+    renderer = initRenderer(context, params);
+  }
+  // Initialize a cache of loaded tiles
   const tiles = initTileCache(params.tileSize, tileFactory);
 
-  // Initialize renderer, to draw the tiles on the canvas
-  const renderer = initRenderer(context, params);
   // Initialize grid of rendered tiles
   const map = initMap(params, renderer, coords, tiles);
 

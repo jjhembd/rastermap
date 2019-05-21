@@ -16,6 +16,8 @@ the higher-resolution tiles are not loaded yet.
 
 rastermap is like a [slippy map], only we make it *snappy*. Check out our
 [rastermap example] and see for yourself!
+*New:* rastermap can also display vector tiles, using the [vectormap] renderer.
+It uses Canvas 2D, so it is somewhat slow. See the [vector example].
 
 ## API
 ### Initialization
@@ -70,3 +72,5 @@ the canvas will be copied, in WebGL animation applications).
 [slippy map]: https://en.wikipedia.org/wiki/Tiled_web_map
 [CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 [rastermap example]: https://jjhembd.github.io/rastermap/examples/raster/index.html
+[vectormap]: https://github.com/jjhembd/vectormap
+[vector example]: https://jjhembd.github.io/rastermap/examples/vector/index.html

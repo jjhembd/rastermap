@@ -6,4 +6,12 @@ export default [{
     format: 'iife',
     name: 'rasterMap'
   }
+}, {
+  input: 'vector/main.js',
+  plugins: [],
+  output: {
+    file: 'vector/main.min.js',
+    format: 'iife',
+    name: 'vectorMap'
+  }
 }];
