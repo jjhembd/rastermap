@@ -1,3 +1,5 @@
+// A skeleton tile factory for raster tiles. Currently not used--
+// we use tilekiln/src/tile.js, which can handle both vector and raster
 export function initTileFactory(tileAPI) {
   // This closure just stores the tileAPI for use in the returned method
 
@@ -8,15 +10,15 @@ export function initTileFactory(tileAPI) {
       ready: false,
     };
 
-    // Request the data
-    const data = new Image();
-    data.onerror = requestError;
-    data.onload = checkData;
-    data.crossOrigin = "anonymous";
-    data.src = tileAPI.getURL( tileAPI.getID(z, x, y) );
+    // Request the image
+    const img = new Image();
+    img.onerror = requestError;
+    img.onload = checkData;
+    img.crossOrigin = "anonymous";
+    img.src = tileAPI.getURL(z, x, y);
 
     function checkData() {
-      tile.ready = (data.complete && data.naturalWidth !== 0);
+      tile.ready = (img.complete && img.naturalWidth !== 0);
     }
 
     function requestError(err) {
@@ -25,7 +27,7 @@ export function initTileFactory(tileAPI) {
     }
 
     // Add to the tile object and return
-    tile.data = data;
+    tile.img = img;
     return tile;
   }
 

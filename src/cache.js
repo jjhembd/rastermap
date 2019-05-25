@@ -24,7 +24,7 @@ export function initTileCache(size, tileFactory) {
     let id = z + "/" + x + "/" + y;
 
     // If the tile exists and is ready, return it with cropping info
-    if (tiles[id] && tiles[id].ready) {
+    if (tiles[id] && tiles[id].rendered) {
       tilebox.tile = tiles[id];
       tilebox.sx = sx;
       tilebox.sy = sy;
@@ -49,7 +49,10 @@ export function initTileCache(size, tileFactory) {
     // If the requested tile didn't exist, we need to order it from the factory
     // NOTE: orders are placed AFTER the recursive call for the parent tile,
     // so missing parents will be ordered first
-    if (!tiles[id]) tiles[id] = tileFactory(z, x, y);
+    if (!tiles[id]) { 
+      let tnew = tileFactory.create(z, x, y);
+      if (tnew) tiles[id] = tnew;
+    }
 
     return;
   }
@@ -58,11 +61,8 @@ export function initTileCache(size, tileFactory) {
     // Remove tiles far from current view (as measured by metric)
 
     for ( let id in tiles ) {
-      let distance = metric(tiles[id].zoom, tiles[id].indx, tiles[id].indy);
-      if (distance >= threshold) {
-        tiles[id].data.src = ""; // Cancel any outstanding request (is it necessary?)
-        delete tiles[id];
-      }
+      let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
+      if (distance >= threshold) delete tiles[id];
     }
     return;
   }

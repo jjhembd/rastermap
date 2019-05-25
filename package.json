@@ -29,8 +29,6 @@
     "rollup-plugin-node-resolve": "^4.2.1"
   },
   "dependencies": {
-    "pbf": "github:jjhembd/pbf",
-    "vector-tile-js": "github:jjhembd/vector-tile-js",
-    "vectormap": "github:jjhembd/vectormap"
+    "tilekiln": "github:jjhembd/tilekiln"
   }
 }

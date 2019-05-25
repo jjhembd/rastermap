@@ -18,7 +18,7 @@ export function initRenderer(context, params) {
 
   function draw(tilebox, ix, iy) {
     context.drawImage(
-        tilebox.tile.data, // Image to read, and paint to the canvas
+        tilebox.tile.img,  // Image to read, and paint to the canvas
         tilebox.sx,        // First x-pixel in tile to read
         tilebox.sy,        // First y-pixel in tile to read
         tilebox.sw,        // Number of pixels to read in x

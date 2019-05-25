@@ -1,11 +1,8 @@
 import { initTileCoords } from "./coords.js";
-import { initTileFactory } from "./tile.js";
-import { initVectorTileFactory } from "./vectorTile.js";
 import { initTileCache } from "./cache.js";
 import { initRenderer } from "./renderer.js";
-import { initVectorRenderer } from "./vectorRenderer.js";
+import * as tilekiln from 'tilekiln';
 import { initMap } from "./map.js";
-import { readJSON } from "./readVector.js";
 import { initBoxQC } from "./boxqc.js";
 
 export function init(params, context, overlay) {
@@ -25,35 +22,23 @@ export function init(params, context, overlay) {
   const coords = initTileCoords(params);
 
   // Initialize tile factory and renderer
-  var tileFactory, renderer;
-  if (params.vector) {
-    tileFactory = initVectorTileFactory( params );
-    renderer = initVectorRenderer(context, params);
-  } else {
-    tileFactory = initTileFactory( params );
-    renderer = initRenderer(context, params);
-  }
+  const factory = tilekiln.init({
+    size: params.tileSize,
+    style: params.style,
+    token: params.token,
+  });
+  const renderer = initRenderer(context, params);
+
   // Initialize a cache of loaded tiles
-  const tiles = initTileCache(params.tileSize, tileFactory);
+  const tiles = initTileCache(params.tileSize, factory);
 
   // Initialize grid of rendered tiles
   const map = initMap(params, renderer, coords, tiles);
 
-  // Load the style document
-  if (params.vector) readJSON(params.styleURL(), loadStyles);
-
-  function loadStyles(err, styleDoc) {
-    if (err) return console.log(err);
-    renderer.loadStyles(styleDoc);
-    return reset();
-  }
-
   // Initialize bounding box QC overlay
   var boxQC;
   var haveVector = overlay instanceof CanvasRenderingContext2D;
-  if (haveVector) {
-    boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
-  }
+  if (haveVector) boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
 
   // Return methods for drawing a 2D map
   return {
