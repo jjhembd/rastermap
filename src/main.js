@@ -5,7 +5,7 @@ import * as tilekiln from 'tilekiln';
 import { initMap } from "./map.js";
 import { initBoxQC } from "./boxqc.js";
 
-export function init(params, context, overlay) {
+export function init(userParams, context, overlay) {
   // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
@@ -13,10 +13,26 @@ export function init(params, context, overlay) {
     //return false;
   }
 
-  // Compute pixel size of map
-  const mapWidth = params.nx * params.tileSize;
-  const mapHeight = params.ny * params.tileSize;
-  console.log("map size: " + mapWidth + "x" + mapHeight);
+  // Check userParams, set defaults for missing parameters
+  const params = {
+    style: userParams.style, // REQUIRED!!
+    token: userParams.token,
+    tileSize: userParams.tileSize || 512,
+    width: userParams.width || context.canvas.width,
+    height: userParams.height || context.canvas.height,
+    maxZoom: userParams.maxZoom || 22,
+  };
+
+  // Compute number of tiles in each direction.
+  params.nx = Math.floor(params.width / params.tileSize);
+  params.ny = Math.floor(params.height / params.tileSize);
+  if (params.nx * params.tileSize !== params.width ||
+      params.ny * params.tileSize !== params.height ) {
+    console.log("width, height, tileSize = " +
+        params.width + ", " + params.height + ", " + params.tileSize);
+    return console.log("ERROR: width, height are not multiples of tileSize!!");
+  }
+  console.log("map size: " + params.width + "x" + params.height);
 
   // Setup tile coordinates and associated methods
   const coords = initTileCoords(params);
@@ -38,7 +54,7 @@ export function init(params, context, overlay) {
   // Initialize bounding box QC overlay
   var boxQC;
   var haveVector = overlay instanceof CanvasRenderingContext2D;
-  if (haveVector) boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
+  if (haveVector) boxQC = initBoxQC(overlay, coords, params.width, params.height);
 
   // Return methods for drawing a 2D map
   return {

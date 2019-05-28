@@ -45,8 +45,8 @@ export function initTileCoords( params ) {
 
   function xyToMapPixels(local, global) {
     toLocal(local, global);
-    local[0] *= params.nx * params.tileSize;
-    local[1] *= params.ny * params.tileSize;
+    local[0] *= params.width;
+    local[1] *= params.height;
     return;
   }
 

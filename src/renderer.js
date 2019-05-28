@@ -1,11 +1,9 @@
 export function initRenderer(context, params) {
   const size = params.tileSize;
-  const mapWidth = params.nx * size;
-  const mapHeight = params.ny * size;
 
   // Resize drawingbuffer to fit the specified number of tiles
-  context.canvas.width = mapWidth;
-  context.canvas.height = mapHeight;
+  context.canvas.width = params.width;
+  context.canvas.height = params.height;
 
   return {
     draw,
@@ -13,7 +11,7 @@ export function initRenderer(context, params) {
   };
 
   function clear() {
-    return context.clearRect(0, 0, mapWidth, mapHeight);
+    return context.clearRect(0, 0, params.width, params.height);
   }
 
   function draw(tilebox, ix, iy) {

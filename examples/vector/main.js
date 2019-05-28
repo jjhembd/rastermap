@@ -2,6 +2,7 @@
 
 import * as rasterMap from "../../dist/rastermap.bundle.js";
 import { params } from "./mapbox-streets.js";
+//import { params } from "./mapbox-ukiyo-e.js";
 import * as projection from "./proj-mercator.js";
 
 export function main() {

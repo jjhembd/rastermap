@@ -45,8 +45,8 @@ function initTileCoords( params ) {
 
   function xyToMapPixels(local, global) {
     toLocal(local, global);
-    local[0] *= params.nx * params.tileSize;
-    local[1] *= params.ny * params.tileSize;
+    local[0] *= params.width;
+    local[1] *= params.height;
     return;
   }
 
@@ -279,12 +279,10 @@ function initTileCache(size, tileFactory) {
 
 function initRenderer(context, params) {
   const size = params.tileSize;
-  const mapWidth = params.nx * size;
-  const mapHeight = params.ny * size;
 
   // Resize drawingbuffer to fit the specified number of tiles
-  context.canvas.width = mapWidth;
-  context.canvas.height = mapHeight;
+  context.canvas.width = params.width;
+  context.canvas.height = params.height;
 
   return {
     draw,
@@ -292,7 +290,7 @@ function initRenderer(context, params) {
   };
 
   function clear() {
-    return context.clearRect(0, 0, mapWidth, mapHeight);
+    return context.clearRect(0, 0, params.width, params.height);
   }
 
   function draw(tilebox, ix, iy) {
@@ -3137,7 +3135,7 @@ function initBoxQC(overlay, coords, width, height) {
   }
 }
 
-function init$1(params, context, overlay) {
+function init$1(userParams, context, overlay) {
   // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
@@ -3145,10 +3143,26 @@ function init$1(params, context, overlay) {
     //return false;
   }
 
-  // Compute pixel size of map
-  const mapWidth = params.nx * params.tileSize;
-  const mapHeight = params.ny * params.tileSize;
-  console.log("map size: " + mapWidth + "x" + mapHeight);
+  // Check userParams, set defaults for missing parameters
+  const params = {
+    style: userParams.style, // REQUIRED!!
+    token: userParams.token,
+    tileSize: userParams.tileSize || 512,
+    width: userParams.width || context.canvas.width,
+    height: userParams.height || context.canvas.height,
+    maxZoom: userParams.maxZoom || 22,
+  };
+
+  // Compute number of tiles in each direction.
+  params.nx = Math.floor(params.width / params.tileSize);
+  params.ny = Math.floor(params.height / params.tileSize);
+  if (params.nx * params.tileSize !== params.width ||
+      params.ny * params.tileSize !== params.height ) {
+    console.log("width, height, tileSize = " +
+        params.width + ", " + params.height + ", " + params.tileSize);
+    return console.log("ERROR: width, height are not multiples of tileSize!!");
+  }
+  console.log("map size: " + params.width + "x" + params.height);
 
   // Setup tile coordinates and associated methods
   const coords = initTileCoords(params);
@@ -3170,7 +3184,7 @@ function init$1(params, context, overlay) {
   // Initialize bounding box QC overlay
   var boxQC;
   var haveVector = overlay instanceof CanvasRenderingContext2D;
-  if (haveVector) boxQC = initBoxQC(overlay, coords, mapWidth, mapHeight);
+  if (haveVector) boxQC = initBoxQC(overlay, coords, params.width, params.height);
 
   // Return methods for drawing a 2D map
   return {

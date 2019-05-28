@@ -1,6 +1,6 @@
 export const params = Object.freeze({
   // URL of a Mapbox Style document
-  style: "mapbox://styles/mapbox/streets-v8",
+  style: "mapbox://styles/jhembd/cjuon9k8c0c111fn1sdmb2hw0",
 
   // Token, for expanding Mapbox shorthand URLs
   token: "pk.eyJ1IjoiamhlbWJkIiwiYSI6ImNqcHpueHpyZjBlMjAzeG9kNG9oNzI2NTYifQ.K7fqhk2Z2YZ8NIV94M-5nA",
