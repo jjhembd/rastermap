@@ -1773,8 +1773,13 @@ function deref(layer, parent) {
   return result;
 }
 
-function loadStyle(styleHref, mapboxToken, callback) {
-  var url = expandStyleURL(styleHref, mapboxToken);
+function loadStyle(style, mapboxToken, callback) {
+  if (typeof style === "object") {
+    // style appears to be parsed JSON already. Prepare it for use
+    return prepStyle(null, style, mapboxToken, callback);
+  }
+  // Style appears to be a URL string. Load the document, then prepare it
+  var url = expandStyleURL(style, mapboxToken);
   var process = (err, doc) => prepStyle(err, doc, mapboxToken, callback);
   return readJSON(url, process);
 }
@@ -2964,15 +2969,15 @@ function init(params) {
   // Declare some global functions that will be defined inside a callback
   var tileFactory, renderer;
 
-  // Get the style info  TODO: allow user to supply style object directly
-  loadStyle(styleURL, mbToken, setup);
-
   const api = { // Initialize properties, update when styles load
     style: {},    // WARNING: directly modifiable from calling program
     create: () => undefined,
     redraw: () => undefined,
     ready: false,
   };
+
+  // Get the style info
+  loadStyle(styleURL, mbToken, setup);
 
   return api;
 
