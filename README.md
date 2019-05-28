@@ -16,29 +16,29 @@ the higher-resolution tiles are not loaded yet.
 
 rastermap is like a [slippy map], only we make it *snappy*. Check out our
 [rastermap example] and see for yourself!
-*New:* rastermap can also display vector tiles, using the [vectormap] renderer.
+*New:* rastermap can also display vector tiles, using the [tilekiln] renderer.
 It uses Canvas 2D, so it is somewhat slow. See the [vector example].
 
 ## API
 ### Initialization
-rasterMap.init takes two parameters:
-- 2D rendering context ([CanvasRenderingContext2D] object) for the target canvas
+rasterMap.init takes three parameters:
 - Parameters object
+- 2D rendering context ([CanvasRenderingContext2D] object) for the target canvas
+- (Optional) 2D rendering context for an overlay QC of the current bounding box
 
 The parameters object must contain the following fields:
-- maxZoom: maximum zoom level of the tile service
+- style: a Mapbox style document, or a URL pointing to it
+- token (optional): a Mapbox API key. Used for expanding Mapbox shorthand URLs
+  of the form mapbox://...
 - tileSize: size in pixels of the supplied tiles. ASSUMES square tiles.
-- nx: number of tiles spanning the map in the x-direction
-- ny: number of tiles spanning the map in the y-direction
-- getID: A function with arguments (zoom, x, y) that will return the unique
-  ID of the tile at the specified coordinates
-- getURL: A function with argument (id) that returns the URL used to access
-  the specified tile. Note that any API tokens must be included here.
+- width, height: pixel size of the displayed map. MUST be multiple of tileSize.
+  If not provided, will use the canvas width of the supplied canvas context
+- maxZoom: maximum allowed zoom
 
 Note that rastermap will automatically resize the drawingbuffer of the canvas
-to (nx * tileSize) X (ny * tileSize). It is up to the user to make sure this is
-consistent with the CSS displayed size of the canvas (or the texture into which
-the canvas will be copied, in WebGL animation applications).
+to width X height. It is up to the user to make sure this is consistent with 
+the CSS displayed size of the canvas (or the texture into which the canvas 
+will be copied, in WebGL animation applications).
 
 ### Map requests
 - drawTiles: method to draw tiles on the canvas (no arguments)
@@ -55,22 +55,27 @@ the canvas will be copied, in WebGL animation applications).
 - getScale: Returns the scaling factor between global and local coordinates
 
 ## Code structure
-- rasterMap.js: Module entry point. Draws the tiles to the Canvas, and
-  tracks the status of each tile in the map.
-- tileCache.js: maintains a cache of tiles. When a tile is requested, tileCache
+- main.js: Module entry point. Checks user parameters, assigns defaults for
+  missing parameters, and initializes sub-modules. Returns API object.
+- cache.js: maintains a cache of tiles. When a tile is requested, tileCache
   will return it if it is available. If not, it will return a *parent* tile
   from a lower zoom level, along with information about which part of the
   parent covers the area of the requested tile. Any missing tiles or parents
   are then requested from the tile service, for use in future draw calls.
   Tiles far from the requested area are *pruned*, to keep memory usage in
   in control.
-- tileCoords.js: manages the coordinates of the tiled map. Given a bounding
-  box, or pan/zoom action, tileCoords will update the zoom and origin of the
-  map to cover the desired area. tileCoords also does some general coordinate
-  math and computes distances between tiles.
+- coords.js: manages the coordinates of the tiled map. Given a bounding box,
+  or pan/zoom action, tileCoords will update the zoom and origin of the map
+  to cover the desired area. coords.js also does some general coordinate math
+  and computes distances between tiles.
+- map.js: executes draw commands, and tracks the status of each tile in the 
+  displayed map.
+- renderer.js: simple wrapper for drawImage and clearRect
+- boxqc.js: manages and draws an overlay showing the current bounding box
+- tile.js: defines structure of new tile objects. NOT USED--see tilekiln
 
 [slippy map]: https://en.wikipedia.org/wiki/Tiled_web_map
 [CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 [rastermap example]: https://jjhembd.github.io/rastermap/examples/raster/index.html
-[vectormap]: https://github.com/jjhembd/vectormap
+[tilekiln]: https://github.com/jjhembd/tilekiln
 [vector example]: https://jjhembd.github.io/rastermap/examples/vector/index.html

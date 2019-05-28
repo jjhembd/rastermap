@@ -1,7 +1,10 @@
 'use strict';
 
 import * as rasterMap from "../../dist/rastermap.bundle.js";
-import { params } from "./mapbox-satellite.js";
+//import { params } from "./mapbox-satellite.js";
+//import { params } from "./maptiler-topo.js";
+//import { params } from "./esri-streetmap.js";
+import { params } from "./mapbox-streets.js";
 import * as projection from "./proj-mercator.js";
 
 export function main() {
