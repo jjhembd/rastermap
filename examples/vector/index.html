@@ -8,19 +8,21 @@
   </head>
 
   <body onload="vectorMap.main()">
-    <div id="completion"></div>
-    <button id="up">Up</button>
-    <button id="down">Down</button>
-    <button id="left">Left</button>
-    <button id="right">Right</button>
-    <button id="zoomIn">Zoom In</button>
-    <button id="zoomOut">Zoom Out</button>
+    <div id="map">
 
-    <p></p>
-
-    <div class="canvasLayers">
       <canvas id="rasterCanvas"></canvas>
       <canvas id="vectorCanvas"></canvas>
+
+      <div id="completion"></div>
+      <button id="up" class="nav">^</button>
+      <button id="down" class="nav">v</button>
+      <button id="left" class="nav">&lt;</button>
+      <button id="right" class="nav">&gt;</button>
+      <div id="topleft">
+        <button id="zoomOut" class="nav">-</button>
+        <button id="zoomIn" class="nav">+</button>
+      </div>
+
     </div>
 
     <div id="coordinates"></div>

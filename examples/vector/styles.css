@@ -3,17 +3,19 @@
 }
 body {
   border: 0;
-  margin: 20;
+  margin: 0;
 }
-div.canvasLayers {
+#map {
   position: relative;
   display: block;
   margin: 0;
   padding: 0;
+  width: 1024px;
+  height: 1024px;
 }
 canvas {
-  width: 1024px;
-  height: 512px;
+  width: 100%;
+  height: 100%;
   padding: 0;
 }
 #rasterCanvas {
@@ -45,8 +47,48 @@ canvas {
   right: 0;
   z-index: 3;
 }
+#topleft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
 #completion {
-  display: inline-block;
-  width: 40ch;
-  text-align: left;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 15ch;
+  text-align: right;
+  background-color: rgba(60, 60, 60, 0.5);
+  color: white;
+  font-family: sans-serif;
+}
+.nav {
+  width: 25px;
+  height: 25px;
+  z-index: 2;
+}
+#up {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, 0%);
+}
+#left {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(0%, -50%);
+}
+#right {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(0%, -50%);
+}
+#down {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 0%);
 }

@@ -13,5 +13,5 @@ export const params = Object.freeze({
   
   // Size of map to display, in pixels
   width: 1024,
-  height: 512,
+  height: 1024,
 });
