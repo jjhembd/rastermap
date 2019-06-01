@@ -213,34 +213,22 @@ function initTileCache(size, tileFactory) {
 
   // Return methods for accessing and updating the tiles
   return {
-    retrieve,
+    retrieve: (zxy) => getTileOrParent(zxy[0], zxy[1], zxy[2], 0, 0, size),
     prune,
   };
 
-  function retrieve(tilebox, zxy) {
-    tilebox.full = false;
-    getTileOrParent(tilebox, zxy[0], zxy[1], zxy[2], 0, 0, size);
-    return tilebox.full;
-  }
-
   function getTileOrParent(
-      tilebox,     // Returned tile object
       z, x, y,     // Coordinates of the requested tile
       sx, sy, sw   // Cropping parameters--which part of the tile to use
       ) {
 
-    // Retrieve the specified tile from the tiles object
+    // Retrieve the specified tile from the tiles object, add cropping info
     let id = z + "/" + x + "/" + y;
+    let tile = tiles[id];
+    let tilebox = { tile, sx, sy, sw };
 
-    // If the tile exists and is ready, return it with cropping info
-    if (tiles[id] && tiles[id].rendered) {
-      tilebox.tile = tiles[id];
-      tilebox.sx = sx;
-      tilebox.sy = sy;
-      tilebox.sw = sw;
-      tilebox.full = true;
-      return;
-    }
+    // If the tile exists and is ready, return it (along with the wrapped info)
+    if (tile && tile.rendered) return tilebox;
 
     // Looks like the tile wasn't ready. Try using the parent tile
     if (z > 0 && sw > 1) { // Don't look too far back
@@ -252,18 +240,20 @@ function initTileCache(size, tileFactory) {
       let psy = sy / 2 + (y / 2 - py) * size;
       let psw = sw / 2;
 
-      getTileOrParent(tilebox, pz, px, py, psx, psy, psw); // recursive call!
+      tilebox = getTileOrParent(pz, px, py, psx, psy, psw); // recursive call!
     }
 
     // If the requested tile didn't exist, we need to order it from the factory
     // NOTE: orders are placed AFTER the recursive call for the parent tile,
     // so missing parents will be ordered first
     if (!tiles[id]) { 
-      let tnew = tileFactory.create(z, x, y);
-      if (tnew) tiles[id] = tnew;
+      let newTile = tileFactory.create(z, x, y);
+      if (newTile) tiles[id] = newTile;
     }
 
-    return;
+    return (tilebox && tilebox.tile && tilebox.tile.rendered)
+      ? tilebox
+      : undefined;
   }
 
   function prune(metric, threshold) {
@@ -3041,7 +3031,6 @@ function initMap(params, renderer, coords, tiles) {
     if ( mapStatus.complete === 1.0 ) return false; // No change!
 
     var updated = false;
-    const tilebox = {};
     const zxy = [];
 
     // Loop over tiles in the map
@@ -3050,8 +3039,8 @@ function initMap(params, renderer, coords, tiles) {
         if (mapStatus.dz[iy][ix] === 0) continue; // This tile already done
 
         coords.getZXY(zxy, ix, iy);
-        var foundTile = tiles.retrieve( tilebox, zxy );
-        if (!foundTile) continue; // No image available for this tile
+        var tilebox = tiles.retrieve( zxy );
+        if (!tilebox) continue; // No image available for this tile
         var dzTmp = zxy[0] - tilebox.tile.z;
         if (dzTmp == mapStatus.dz[iy][ix]) continue; // Tile already written
 
