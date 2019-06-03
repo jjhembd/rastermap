@@ -1,0 +1,44 @@
+<html>
+
+  <head>
+    <title>Raster Map</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link rel="icon" type="image/png" href="splitearth_v12b.png">
+    <script src="main.min.js"></script>
+  </head>
+
+  <body onload="dynamic.main()">
+    <div id="map">
+
+      <canvas id="rasterCanvas"></canvas>
+      <canvas id="vectorCanvas"></canvas>
+
+      <div id="topleft">
+        <button id="zoomOut" class="nav">-</button>
+        <button id="zoomIn" class="nav">+</button>
+      </div>
+
+      <div id="completion"></div>
+
+      <button id="up" class="nav">^</button>
+      <button id="down" class="nav">v</button>
+      <button id="left" class="nav">&lt;</button>
+      <button id="right" class="nav">&gt;</button>
+
+      <div id = "tooltip"></div>
+
+    </div>
+
+    <div id="coordinates"></div>
+
+    <p>
+      Enter longitude and latitude in degrees for a bounding box:<br>
+      <input type="text" id="west" placeholder="West Longitude">
+      <input type="text" id="east" placeholder="East Longitude">
+      <input type="text" id="north" placeholder="North Latitude">
+      <input type="text" id="south" placeholder="South Latitude">
+      <button id="bboxSet">Set Bounding Box</button>
+    </p>
+  </body>
+
+</html>

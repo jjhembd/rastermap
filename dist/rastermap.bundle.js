@@ -1629,8 +1629,12 @@ function readMVT(dataHref, size, callback) {
     if (this.responseType !== "arraybuffer") {
       var err = "Wrong responseType. Expected arraybuffer, got " + 
         this.responseType;
-      callback(err, null);
-      return;
+      return callback(err, null);
+    }
+    if (this.status === 404) {
+      // TODO: is there a better way to handle this?
+      console.log("ERROR in readMVT: could not load " + dataHref);
+      return callback(null, {});
     }
 
     //console.time('parseMVT');

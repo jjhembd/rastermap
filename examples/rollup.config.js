@@ -1,3 +1,5 @@
+import resolve from 'rollup-plugin-node-resolve';
+
 export default [{
   input: 'raster/main.js',
   plugins: [],
@@ -13,5 +15,15 @@ export default [{
     file: 'vector/main.min.js',
     format: 'iife',
     name: 'vectorMap'
+  }
+}, {
+  input: 'dynamic/main.js',
+  plugins: [
+    resolve(),
+  ],
+  output: {
+    file: 'dynamic/main.min.js',
+    format: 'iife',
+    name: 'dynamic'
   }
 }];
