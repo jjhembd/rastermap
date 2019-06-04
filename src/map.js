@@ -18,6 +18,7 @@ export function initMap(params, renderer, coords, tiles) {
     drawTiles,
     reset,
     loaded: () => grid.complete,
+    boxes: grid.tileboxes,
   };
 
   function drawTiles() {

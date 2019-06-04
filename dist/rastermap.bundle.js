@@ -3019,6 +3019,7 @@ function initMap(params, renderer, coords, tiles) {
     drawTiles,
     reset,
     loaded: () => grid.complete,
+    boxes: grid.tileboxes,
   };
 
   function drawTiles() {
@@ -3190,6 +3191,8 @@ function init$1(userParams, context, overlay) {
     toLocal: coords.toLocal,
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
+    boxes: map.boxes,
+    style: factory.style,
   };
 
   function fitBoundingBox(p1, p2) {

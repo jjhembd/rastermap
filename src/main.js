@@ -68,6 +68,8 @@ export function init(userParams, context, overlay) {
     toLocal: coords.toLocal,
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
+    boxes: map.boxes,
+    style: factory.style,
   };
 
   function fitBoundingBox(p1, p2) {

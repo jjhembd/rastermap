@@ -3,7 +3,6 @@
 import { params } from "./wells.js";
 import * as rasterMap from "../../dist/rastermap.bundle.js";
 import { initMapCursor } from "./cursorFeature.js";
-import * as projection from "./proj-mercator.js";
 
 export function main() {
   // Get the map container div
@@ -11,31 +10,10 @@ export function main() {
 
   // Setup 2D map
   const display = document.getElementById("rasterCanvas").getContext("2d");
-  const overlay = document.getElementById("vectorCanvas").getContext("2d");
-  const map = rasterMap.init(params, display, overlay);
+  const map = rasterMap.init(params, display);
 
   // Set up mouse tracking
   const cursor = initMapCursor(mapDiv, params);
-
-  // Handle a supplied bounding box
-  var westDeg = document.getElementById("west");
-  var eastDeg = document.getElementById("east");
-  var northDeg = document.getElementById("north");
-  var southDeg = document.getElementById("south");
-  var bboxSet = document.getElementById("bboxSet");
-  bboxSet.addEventListener("click", function(click) {
-    var p1 = [];
-    projection.lonLatToXY( p1, 
-        [toRadians(westDeg.value), toRadians(northDeg.value)] );
-    var p2 = [];
-    projection.lonLatToXY( p2,
-        [toRadians(eastDeg.value), toRadians(southDeg.value)] );
-    map.fitBoundingBox(p1, p2);
-  }, false);
-
-  function toRadians(degrees) {
-    return degrees * Math.PI / 180.0;
-  };
 
   // Setup panning controls
   var up = document.getElementById("up");
@@ -56,17 +34,36 @@ export function main() {
   // Track loading status and cursor position
   var loaded = document.getElementById("completion");
   var tooltip = document.getElementById("tooltip");
+
+  // Get ready to print out feature info
+  var info = document.getElementById("info");
+
   // Start animation loop
   requestAnimationFrame(checkRender);
   function checkRender(time) {
     map.drawTiles();
+
     var percent = map.loaded() * 100;
     loaded.innerHTML = (percent < 100)
       ? "Loading: " + percent.toFixed(0) + "%"
       : "Complete! 100%";
-    cursor.update();
+    cursor.update(map.boxes);
+
     tooltip.innerHTML = "Tile index: (" + cursor.tilenum[0] + "," + cursor.tilenum[1] + ")";
     tooltip.innerHTML += "<br>Pixel: (" + cursor.tilepix[0] + "," + cursor.tilepix[1] + ")";
+
+    var selected = cursor.feature();
+
+    // Get link to the highlighted-well style
+    var highlighter;
+    var layers = map.style.layers;
+    if (layers) {
+      highlighter = layers.find(layer => layer.id === "highlighted-well");
+      if (highlighter) highlighter.filter[3] = selected.properties.title;
+    }
+
+    info.innerHTML = "<pre>" + JSON.stringify(selected, null, 2) + "</pre>";
+
     requestAnimationFrame(checkRender);
   }
 }

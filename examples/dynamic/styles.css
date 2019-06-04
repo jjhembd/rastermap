@@ -7,7 +7,8 @@ body {
 }
 #map {
   position: relative;
-  display: block;
+  display: inline-block;
+  float: left;
   margin: 0;
   padding: 0;
   width: 1024px;
@@ -22,17 +23,6 @@ canvas {
   background-color: #000099;
   left: 0;
   top: 0;
-  z-index: 0;
-}
-#vectorCanvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 1;
-}
-#glOffScreen {
-  display: block;
-  visibility: hidden;
   z-index: 0;
 }
 #coordinates {
@@ -101,4 +91,10 @@ canvas {
   color: white;
   font-family: sans-serif;
   z-index: 2;
+}
+#info {
+  height: 1024px;
+  padding: 20px;
+  word-wrap: break-word;
+  overflow: scroll;
 }

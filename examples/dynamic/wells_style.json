@@ -29,6 +29,17 @@
         "circle-radius": 2.5,
         "circle-color": "#0022EE"
       }
+    },
+    {
+      "id": "highlighted-well",
+      "type": "circle",
+      "source": "wells",
+      "source-layer": "TWDB_Groundwater_v2",
+      "filter": ["==", "title", 9999999],
+      "paint": {
+        "circle-radius": 5.0,
+        "circle-color": "#FF0000"
+      }
     }
   ]
 }
