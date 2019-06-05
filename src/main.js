@@ -4,6 +4,7 @@ import { initRenderer } from "./renderer.js";
 import * as tilekiln from 'tilekiln';
 import { initMap } from "./map.js";
 import { initBoxQC } from "./boxqc.js";
+import { initSelector } from "./selection.js";
 
 export function init(userParams, context, overlay) {
   // Check if we have a valid canvas rendering context
@@ -71,6 +72,7 @@ export function init(userParams, context, overlay) {
     boxes: map.boxes,
     style: () => factory.style,
     redraw,
+    select: initSelector(params.tileSize, map.boxes),
   };
 
   function redraw() {

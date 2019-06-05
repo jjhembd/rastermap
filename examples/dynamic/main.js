@@ -2,7 +2,7 @@
 
 import { params } from "./wells.js";
 import * as rasterMap from "../../dist/rastermap.bundle.js";
-import { initMapCursor } from "./cursorFeature.js";
+import { initTouchy } from 'touchy';
 
 export function main() {
   // Get the map container div
@@ -13,7 +13,7 @@ export function main() {
   const map = rasterMap.init(params, display);
 
   // Set up mouse tracking
-  const cursor = initMapCursor(mapDiv, params);
+  const cursor = initTouchy(mapDiv);
 
   // Setup panning controls
   var up = document.getElementById("up");
@@ -43,16 +43,17 @@ export function main() {
   function checkRender(time) {
     map.drawTiles();
 
+    // Report loading status
     var percent = map.loaded() * 100;
     loaded.innerHTML = (percent < 100)
       ? "Loading: " + percent.toFixed(0) + "%"
       : "Complete! 100%";
-    cursor.update(map.boxes);
 
-    tooltip.innerHTML = "Tile index: (" + cursor.tilenum[0] + "," + cursor.tilenum[1] + ")";
-    tooltip.innerHTML += "<br>Pixel: (" + cursor.tilepix[0] + "," + cursor.tilepix[1] + ")";
-
-    var selected = cursor.feature();
+    // Find the well nearest to the cursor
+    var box = mapDiv.getBoundingClientRect();
+    var x = cursor.x() - box.left;
+    var y = cursor.y() - box.top;
+    var selected = map.select(x, y, 5, "wells", "TWDB_Groundwater_v2");
 
     // Get link to the highlighted-well style
     var highlighter;
