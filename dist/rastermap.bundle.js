@@ -215,6 +215,7 @@ function initTileCache(size, tileFactory) {
   return {
     retrieve: (zxy) => getTileOrParent(zxy[0], zxy[1], zxy[2], 0, 0, size),
     prune,
+    unrender: () => Object.values(tiles).forEach(tile => tile.rendered = false),
   };
 
   function getTileOrParent(
@@ -229,6 +230,10 @@ function initTileCache(size, tileFactory) {
 
     // If the tile exists and is ready, return it (along with the wrapped info)
     if (tile && tile.rendered) return tilebox;
+    if (tile && tile.loaded) {
+      tileFactory.redraw(tile);
+      return tilebox;
+    }
 
     // Looks like the tile wasn't ready. Try using the parent tile
     if (z > 0 && sw > 1) { // Don't look too far back
@@ -3016,10 +3021,10 @@ function initMap(params, renderer, coords, tiles) {
 
   // Return methods for drawing a 2D map
   return {
-    drawTiles,
-    reset,
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
+    reset: () => grid.reset(),
+    drawTiles,
   };
 
   function drawTiles() {
@@ -3051,12 +3056,6 @@ function initMap(params, renderer, coords, tiles) {
       }
     }
     return updated;
-  }
-
-  function reset() {
-    grid.reset();
-    renderer.clear();
-    return;
   }
 }
 
@@ -3192,8 +3191,14 @@ function init$1(userParams, context, overlay) {
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
     boxes: map.boxes,
-    style: factory.style,
+    style: () => factory.style,
+    redraw,
   };
+
+  function redraw() {
+    tiles.unrender();
+    map.reset();
+  }
 
   function fitBoundingBox(p1, p2) {
     var mapChanged = coords.fitBoundingBox(p1, p2);
@@ -3210,6 +3215,7 @@ function init$1(userParams, context, overlay) {
   }
 
   function reset() {
+    renderer.clear();
     map.reset();
     if (haveVector) boxQC.reset();
     return;

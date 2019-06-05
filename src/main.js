@@ -69,8 +69,14 @@ export function init(userParams, context, overlay) {
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
     boxes: map.boxes,
-    style: factory.style,
+    style: () => factory.style,
+    redraw,
   };
+
+  function redraw() {
+    tiles.unrender();
+    map.reset();
+  }
 
   function fitBoundingBox(p1, p2) {
     var mapChanged = coords.fitBoundingBox(p1, p2);
@@ -87,6 +93,7 @@ export function init(userParams, context, overlay) {
   }
 
   function reset() {
+    renderer.clear();
     map.reset();
     if (haveVector) boxQC.reset();
     return;

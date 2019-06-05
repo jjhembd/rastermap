@@ -56,10 +56,17 @@ export function main() {
 
     // Get link to the highlighted-well style
     var highlighter;
-    var layers = map.style.layers;
+    var layers = map.style().layers;
     if (layers) {
       highlighter = layers.find(layer => layer.id === "highlighted-well");
-      if (highlighter) highlighter.filter[3] = selected.properties.title;
+      if (!highlighter) {
+        // do nothing
+      } else if (selected && selected.properties) {
+        highlighter.filter[2] = selected.properties.title.toString();
+      } else {
+        highlighter.filter[2] = "99999999999";
+      }
+      map.redraw();
     }
 
     info.innerHTML = "<pre>" + JSON.stringify(selected, null, 2) + "</pre>";

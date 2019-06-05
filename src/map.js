@@ -15,10 +15,10 @@ export function initMap(params, renderer, coords, tiles) {
 
   // Return methods for drawing a 2D map
   return {
-    drawTiles,
-    reset,
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
+    reset: () => grid.reset(),
+    drawTiles,
   };
 
   function drawTiles() {
@@ -50,11 +50,5 @@ export function initMap(params, renderer, coords, tiles) {
       }
     }
     return updated;
-  }
-
-  function reset() {
-    grid.reset();
-    renderer.clear();
-    return;
   }
 }
