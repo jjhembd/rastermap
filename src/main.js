@@ -22,7 +22,14 @@ export function init(userParams, context, overlay) {
     width: userParams.width || context.canvas.width,
     height: userParams.height || context.canvas.height,
     maxZoom: userParams.maxZoom || 22,
+    center: userParams.center || [0.5, 0.5], // X, Y in map coordinates
+    zoom: Math.floor(userParams.zoom) || 1,
   };
+
+  // Check some values and edit as needed
+  params.center[0] = Math.min(Math.max(0.0, params.center[0]), 1.0);
+  params.center[1] = Math.min(Math.max(0.0, params.center[1]), 1.0);
+  params.zoom = Math.min(Math.max(0, params.zoom), params.maxZoom);
 
   // Compute number of tiles in each direction.
   params.nx = Math.floor(params.width / params.tileSize);

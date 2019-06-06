@@ -1,12 +1,13 @@
 function initTileCoords( params ) {
-
   // Initialize position and zoom of the map. All are integers
-  var zoom = Math.floor( Math.log2( Math.max(params.nx, params.ny) ) );
-  var xTile0 = 0;
-  var yTile0 = 0;
+  var zoom = params.zoom;
+  var nTiles = 2 ** zoom;
+  var xTile0 = params.center[0] * nTiles - params.nx / 2;
+  xTile0 = wrap(Math.round(xTile0), nTiles);
+  var yTile0 = params.center[1] * nTiles - params.ny / 2;
+  yTile0 = wrap(Math.round(yTile0), nTiles);
 
   // Transform parameters
-  var nTiles = 2 ** zoom;
   const origin = new Float64Array(2);
   const scale = new Float64Array(2);
 
@@ -22,7 +23,7 @@ function initTileCoords( params ) {
 
   return {
     // Info about current map state
-    getScale: function(i) { return scale[i]; },
+    getScale: (i) => scale[i],
     getZXY,
 
     // Methods to compute positions within current map
@@ -3194,7 +3195,14 @@ function init$1(userParams, context, overlay) {
     width: userParams.width || context.canvas.width,
     height: userParams.height || context.canvas.height,
     maxZoom: userParams.maxZoom || 22,
+    center: userParams.center || [0.5, 0.5], // X, Y in map coordinates
+    zoom: Math.floor(userParams.zoom) || 1,
   };
+
+  // Check some values and edit as needed
+  params.center[0] = Math.min(Math.max(0.0, params.center[0]), 1.0);
+  params.center[1] = Math.min(Math.max(0.0, params.center[1]), 1.0);
+  params.zoom = Math.min(Math.max(0, params.zoom), params.maxZoom);
 
   // Compute number of tiles in each direction.
   params.nx = Math.floor(params.width / params.tileSize);

@@ -1,12 +1,13 @@
 export function initTileCoords( params ) {
-
   // Initialize position and zoom of the map. All are integers
-  var zoom = Math.floor( Math.log2( Math.max(params.nx, params.ny) ) );
-  var xTile0 = 0;
-  var yTile0 = 0;
+  var zoom = params.zoom;
+  var nTiles = 2 ** zoom;
+  var xTile0 = params.center[0] * nTiles - params.nx / 2;
+  xTile0 = wrap(Math.round(xTile0), nTiles);
+  var yTile0 = params.center[1] * nTiles - params.ny / 2;
+  yTile0 = wrap(Math.round(yTile0), nTiles);
 
   // Transform parameters
-  var nTiles = 2 ** zoom;
   const origin = new Float64Array(2);
   const scale = new Float64Array(2);
 
@@ -22,7 +23,7 @@ export function initTileCoords( params ) {
 
   return {
     // Info about current map state
-    getScale: function(i) { return scale[i]; },
+    getScale: (i) => scale[i],
     getZXY,
 
     // Methods to compute positions within current map

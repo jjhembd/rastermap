@@ -14,4 +14,8 @@ export const params = Object.freeze({
   // Size of map to display, in pixels
   width: 1024,
   height: 1024,
+
+  // Initial center and zoom
+  center: [0.21875, 0.40625],
+  zoom: 5,
 });
