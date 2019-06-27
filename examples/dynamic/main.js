@@ -67,7 +67,7 @@ export function main() {
       } else {
         highlighter.filter[2] = "99999999999";
       }
-      map.redraw();
+      map.redraw("highlight");
     }
 
     info.innerHTML = "<pre>" + JSON.stringify(selected, null, 2) + "</pre>";

@@ -82,8 +82,8 @@ export function init(userParams, context, overlay) {
     select: initSelector(params.tileSize, map.boxes),
   };
 
-  function redraw() {
-    tiles.unrender();
+  function redraw(group) {
+    tiles.unrender(group);
     map.reset();
   }
 

@@ -216,7 +216,7 @@ function initTileCache(size, tileFactory) {
   return {
     retrieve: (zxy) => getTileOrParent(zxy[0], zxy[1], zxy[2], 0, 0, size),
     prune,
-    unrender: () => Object.values(tiles).forEach(tile => tile.rendered = false),
+    unrender,
   };
 
   function getTileOrParent(
@@ -232,7 +232,8 @@ function initTileCache(size, tileFactory) {
     // If the tile exists and is ready, return it (along with the wrapped info)
     if (tile && tile.rendered) return tilebox;
     if (tile && tile.loaded) {
-      tileFactory.redraw(tile);
+      //tileFactory.redraw(tile);
+      reRender(tile);
       return tilebox;
     }
 
@@ -270,6 +271,44 @@ function initTileCache(size, tileFactory) {
       if (distance >= threshold) delete tiles[id];
     }
     return;
+  }
+
+  function unrender(group) {
+    var groups = tileFactory.groups;
+
+    var invalidate = 
+      (groups.length <= 1)       ? invalidateTile
+      : (group === undefined)    ? (tile, group) => invalidateAll(tile, groups)
+      : (groups.includes(group)) ? invalidateGroup
+      : () => true; // Bad group name. Do nothing
+
+    Object.values(tiles).forEach( tile => invalidate(tile, group) );
+  }
+
+  function invalidateTile(tile, group) {
+    tile.rendered = false;
+  }
+
+  function invalidateAll(tile, groups) {
+    groups.forEach(group => tile.laminae[group].rendered = false);
+    tile.rendered = false;
+  }
+
+  function invalidateGroup(tile, group) {
+    tile.laminae[group].rendered = false;
+    tile.rendered = false;
+  }
+
+  function reRender(tile) {
+    var groups = tileFactory.groups;
+    if (groups.length <= 1) return tileFactory.redraw(tile);
+
+    groups.forEach(group => {
+      if (tile.laminae[group].rendered) return;
+      tileFactory.drawGroup(tile, group);
+    });
+
+    tileFactory.composite(tile);
   }
 }
 
@@ -1877,9 +1916,11 @@ function expandTileURL(url, token) {
 
 // TODO: Move this to a worker thread. readMVT is CPU intensive
 // Also, convert images to ImageBitmaps?
-function initTileFactory(size, sources) {
+function initTileFactory(size, sources, layerGroupNames) {
   // Input size is the pixel size of the canvas used for vector rendering
   // Input sources is an OBJECT of TileJSON descriptions of tilesets
+  // Input layerGroupNames is an ARRAY of names for groupings of style layers
+  //   that will be rendered to separate canvases before compositing
 
   // For now we ignore sources that don't have tile endpoints
   const tileSourceKeys = Object.keys(sources).filter( k => {
@@ -1887,17 +1928,23 @@ function initTileFactory(size, sources) {
   });
 
   function orderTile(z, x, y, callback = () => true) {
+    var baseLamina = initLamina(size);
     const tile = {
       z, x, y,
       sources: {},
       loaded: false,
-      rendered: false,
+      img: baseLamina.img,
+      ctx: baseLamina.ctx,
+      rendered: baseLamina.rendered,
+      laminae: {},
     };
-    // Add a canvas for rendering results
-    tile.img = document.createElement("canvas");
-    tile.img.width = size;
-    tile.img.height = size;
-    tile.ctx = tile.img.getContext("2d");
+
+    // Add canvases for separate rendering of layer groups, if supplied
+    if (layerGroupNames && layerGroupNames.length > 1) {
+      layerGroupNames.forEach( group => {
+        tile.laminae[group] = initLamina(size);
+      });
+    }
 
     var numToDo = tileSourceKeys.length;
     tileSourceKeys.forEach( loadTile );
@@ -1925,6 +1972,17 @@ function initTileFactory(size, sources) {
   }
 
   return orderTile;
+}
+
+function initLamina(size) {
+  let img = document.createElement("canvas");
+  img.width = size;
+  img.height = size;
+  return { 
+    img, 
+    ctx: img.getContext("2d"),
+    rendered: false,
+  };
 }
 
 function tileURL(endpoint, z, x, y) {
@@ -3222,9 +3280,12 @@ function intersects(box1, box2) {
   return true;
 }
 
-function initRenderer$1(canvSize, styleLayers, sprite) {
+function initRenderer$1(canvSize, styleLayers, styleGroups, sprite) {
+  // Input canvSize is an integer, for the pixel size of the (square) tiles
   // Input styleLayers points to the .layers property of a Mapbox style document
-  // Specification: https://docs.mapbox.com/mapbox-gl-js/style-spec/
+  //   Specification: https://docs.mapbox.com/mapbox-gl-js/style-spec/
+  // Input styleGroups is a list of style layer groups identified by a
+  //   "tilekiln-group" property of each layer
   // Input sprite (if defined) is an object with image and meta properties
 
   // Create canvas for rendering, set drawingbuffer size
@@ -3236,41 +3297,59 @@ function initRenderer$1(canvSize, styleLayers, sprite) {
   const ctx = canvas.getContext("2d");
   ctx.save();
 
-  // Separate styles into paint and label types
-  const paintLayers = styleLayers.filter(layer => layer.type !== "symbol");
-  const labelLayers = styleLayers.filter(layer => layer.type === "symbol").reverse();
-
   // Initialize painter: paints a single layer onto the canvas
   const painter = initPainter(ctx);
   // Initialize labeler: draws text labels and "sprite" icons
   const labeler = initLabeler(ctx, sprite);
 
+  // Sort styles into groups
+  const styles = {};
+  styleGroups.forEach( group => {
+    styles[group] = sortStyleGroup(styleLayers, group);
+  });
+
+  var getLamina, composite;
+  if (styleGroups.length > 1) { 
+    // Define function to return the appropriate lamina (partial rendering)
+    getLamina = (tile, group) => tile.laminae[group];
+    // Define function to composite all laminae canvases into the main canvas
+    composite = (tile) => {
+      tile.ctx.clearRect(0, 0, canvSize, canvSize);
+      styleGroups.forEach( group => {
+        tile.ctx.drawImage(tile.laminae[group].img, 0, 0);
+      });
+      tile.rendered = true;
+    };
+  } else {
+    // Only one group of style layers. Render directly to the main canvas
+    getLamina = (tile, group) => tile;
+    // Compositing is not needed: return a dummy no-op function
+    composite = (tile) => true;
+  }
+
   return {
-    drawTile,
+    drawGroup,
+    composite,
     canvas,
   };
 
-  function drawTile(tile, callback = () => undefined) {
+  function drawGroup(tile, group = "none", callback = () => undefined) {
+    if (!styles[group]) return callback(null, tile);
+
+    // Clear context and bounding boxes
     ctx.clearRect(0, 0, canvSize, canvSize);
-
-    // Draw paint layers
-    paintLayers.forEach( style => drawLayer(style, tile.z, tile.sources) );
-
-    // Clear bounding boxes from previous draw
     labeler.clearBoxes();
-    // Draw label layers
-    labelLayers.forEach( style => drawLayer(style, tile.z, tile.sources) );
+
+    // Draw the layers
+    styles[group].forEach( style => drawLayer(style, tile.z, tile.sources) );
 
     // Copy the rendered image to the tile
-    //tile.img.onload = checkImg;
-    //tile.img.src = canvas.toDataURL(); // Slow!! >50ms for canvSize = 512
-    tile.ctx.drawImage(canvas, 0, 0); // 5-6ms. why not render to this ctx in the first place?
-    checkImg();
+    let lamina = getLamina(tile, group);
+    lamina.ctx.clearRect(0, 0, canvSize, canvSize);
+    lamina.ctx.drawImage(canvas, 0, 0);
     
-    function checkImg() {
-      tile.rendered = true;
-      return callback(null, tile);
-    }
+    lamina.rendered = true;
+    return callback(null, tile);
   }
 
   function drawLayer(style, zoom, sources) {
@@ -3312,6 +3391,19 @@ function initRenderer$1(canvSize, styleLayers, sprite) {
   }
 }
 
+function sortStyleGroup(layers, groupName) {
+  // Get the layers belonging to this group
+  var group = (groupName === "none")
+    ? layers.filter(layer => !layer["tilekiln-group"]) // Layers with no group specified
+    : layers.filter(layer => layer["tilekiln-group"] === groupName);
+
+  // Reverse the order of the symbol layers
+  var labels = group.filter(layer => layer.type === "symbol").reverse();
+
+  // Append reordered symbol layers to non-symbol layers
+  return group.filter(layer => layer.type !== "symbol").concat(labels);
+}
+
 function init(params) {
   // Process parameters, substituting defaults as needed
   var canvSize = params.size || 512;
@@ -3319,13 +3411,16 @@ function init(params) {
   var mbToken  = params.token;   // May be undefined
   var callback = params.callback || ( () => undefined );
 
-  // Declare some global functions that will be defined inside a callback
-  var tileFactory, renderer;
+  // Declare some variables & methods that will be defined inside a callback
+  var styleGroups, tileFactory, renderer;
 
   const api = { // Initialize properties, update when styles load
     style: {},    // WARNING: directly modifiable from calling program
     create: () => undefined,
+    drawGroup: (group) => undefined,
+    composite: () => undefined,
     redraw: () => undefined,
+    groups: [],
     ready: false,
   };
 
@@ -3336,25 +3431,52 @@ function init(params) {
 
   function setup(err, styleDoc) {
     if (err) callback(err);
-    tileFactory = initTileFactory(canvSize, styleDoc.sources);
-    renderer = initRenderer$1(canvSize, styleDoc.layers, styleDoc.sprite);
+
+    // Get layer group names from styleDoc
+    styleGroups = styleDoc.layers
+      .map( layer => layer["tilekiln-group"] || "none" )
+      .filter(uniq);
+
+    // Make sure the groups in order, not interleaved
+    var groupCheck = styleGroups.sort().filter(uniq);
+    if (styleGroups.length !== groupCheck.length) {
+      err = "tilekiln setup: Input layer groups are not in order!";
+      return callback(err);
+    }
+    
+    function uniq(x, i, a) {
+      return ( !i || x !== a[i-1] ); // x is not a repeat of the previous value
+    }
+
+    tileFactory = initTileFactory(canvSize, styleDoc.sources, styleGroups);
+    renderer = initRenderer$1(canvSize, styleDoc.layers, styleGroups, styleDoc.sprite);
 
     // Update api
     api.style = styleDoc;
     api.create = create;
-    api.redraw = renderer.drawTile;
+    api.drawGroup = renderer.drawGroup;
+    api.composite = renderer.composite;
+    api.redraw = drawAll;
     api.ready = true;
+    api.groups = styleGroups;
 
     return callback(null, api);
   }
 
-  function create(z, x, y, cb) {
+  function create(z, x, y, cb = () => undefined) {
     var tile = tileFactory(z, x, y, render);
     function render(err) {
       if (err) cb(err);
-      renderer.drawTile(tile, cb);
+      drawAll(tile);
+      return cb(null, tile);
     }
     return tile;
+  }
+
+  function drawAll(tile, callback = () => true) {
+    styleGroups.forEach( group => renderer.drawGroup(tile, group) );
+    renderer.composite(tile);
+    callback(null, tile);
   }
 }
 
@@ -3626,8 +3748,8 @@ function init$1(userParams, context, overlay) {
     select: initSelector(params.tileSize, map.boxes),
   };
 
-  function redraw() {
-    tiles.unrender();
+  function redraw(group) {
+    tiles.unrender(group);
     map.reset();
   }
 
