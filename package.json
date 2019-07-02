@@ -30,6 +30,7 @@
     "touchy": "github:jjhembd/touchy"
   },
   "dependencies": {
+    "@turf/boolean-point-in-polygon": "^6.0.1",
     "tilekiln": "github:jjhembd/tilekiln"
   }
 }

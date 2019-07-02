@@ -26,4 +26,14 @@ export default [{
     format: 'iife',
     name: 'dynamic'
   }
+}, {
+  input: 'macrostrat/main.js',
+  plugins: [
+    resolve(),
+  ],
+  output: {
+    file: 'macrostrat/main.min.js',
+    format: 'iife',
+    name: 'macrostrat'
+  }
 }];
