@@ -1,4 +1,6 @@
-export function initMap(params, renderer, coords, tiles) {
+import { initRenderer } from "./renderer.js";
+
+export function initGrid(params, context, coords, tiles) {
   const oneTileComplete = 1. / params.nx / params.ny;
 
   const grid = {
@@ -13,11 +15,15 @@ export function initMap(params, renderer, coords, tiles) {
   }
   grid.reset(); // Initialize array of tileboxes
 
-  // Return methods for drawing a 2D map
+  // Initialize renderer
+  const renderer = initRenderer(context, params);
+
+  // Return methods for updating and rendering a grid of tiles
   return {
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
     reset: () => grid.reset(),
+    clear: renderer.clear,
     drawTiles,
   };
 

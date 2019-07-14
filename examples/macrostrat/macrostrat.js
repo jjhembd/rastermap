@@ -1,6 +1,6 @@
 export const params = Object.freeze({
   // URL of a Mapbox Style document
-  style: "./macrostrat-sandwich.json",
+  style: "./macrostrat-grouped.json", //sandwich.json",
 
   // Token, for expanding Mapbox shorthand URLs
   token: "pk.eyJ1IjoiamhlbWJkIiwiYSI6ImNqcHpueHpyZjBlMjAzeG9kNG9oNzI2NTYifQ.K7fqhk2Z2YZ8NIV94M-5nA",

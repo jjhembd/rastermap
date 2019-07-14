@@ -92,6 +92,12 @@ canvas {
   font-family: sans-serif;
   z-index: 2;
 }
+#bottomright {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 2;
+}
 #info {
   height: 1024px;
   padding: 20px;

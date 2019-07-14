@@ -7,6 +7,8 @@ export function initTileCache(size, tileFactory) {
     retrieve: (zxy) => getTileOrParent(zxy[0], zxy[1], zxy[2], 0, 0, size),
     prune,
     unrender,
+    hideGroup,
+    showGroup,
   };
 
   function getTileOrParent(
@@ -87,6 +89,16 @@ export function initTileCache(size, tileFactory) {
   function invalidateGroup(tile, group) {
     tile.laminae[group].rendered = false;
     tile.rendered = false;
+  }
+
+  function hideGroup(group) {
+    tileFactory.hideGroup(group);
+    Object.values(tiles).forEach( tile => { tile.rendered = false; } );
+  }
+
+  function showGroup(group) {
+    tileFactory.showGroup(group);
+    Object.values(tiles).forEach( tile => { tile.rendered = false; } );
   }
 
   function reRender(tile) {

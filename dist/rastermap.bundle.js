@@ -217,6 +217,8 @@ function initTileCache(size, tileFactory) {
     retrieve: (zxy) => getTileOrParent(zxy[0], zxy[1], zxy[2], 0, 0, size),
     prune,
     unrender,
+    hideGroup,
+    showGroup,
   };
 
   function getTileOrParent(
@@ -299,6 +301,16 @@ function initTileCache(size, tileFactory) {
     tile.rendered = false;
   }
 
+  function hideGroup(group) {
+    tileFactory.hideGroup(group);
+    Object.values(tiles).forEach( tile => { tile.rendered = false; } );
+  }
+
+  function showGroup(group) {
+    tileFactory.showGroup(group);
+    Object.values(tiles).forEach( tile => { tile.rendered = false; } );
+  }
+
   function reRender(tile) {
     var groups = tileFactory.groups;
     if (groups.length <= 1) return tileFactory.redraw(tile);
@@ -309,38 +321,6 @@ function initTileCache(size, tileFactory) {
     });
 
     tileFactory.composite(tile);
-  }
-}
-
-function initRenderer(context, params) {
-  const size = params.tileSize;
-
-  // Resize drawingbuffer to fit the specified number of tiles
-  context.canvas.width = params.width;
-  context.canvas.height = params.height;
-
-  return {
-    draw,
-    clear,
-  };
-
-  function clear() {
-    return context.clearRect(0, 0, params.width, params.height);
-  }
-
-  function draw(tilebox, ix, iy) {
-    context.drawImage(
-        tilebox.tile.img,  // Image to read, and paint to the canvas
-        tilebox.sx,        // First x-pixel in tile to read
-        tilebox.sy,        // First y-pixel in tile to read
-        tilebox.sw,        // Number of pixels to read in x
-        tilebox.sw,        // Number of pixels to read in y
-        ix * size,         // First x-pixel in canvas to paint
-        iy * size,         // First y-pixel in canvas to paint
-        size,              // Number of pixels to paint in x
-        size               // Number of pixels to paint in y
-        );
-    return;
   }
 }
 
@@ -1916,11 +1896,11 @@ function expandTileURL(url, token) {
 
 // TODO: Move this to a worker thread. readMVT is CPU intensive
 // Also, convert images to ImageBitmaps?
-function initTileFactory(size, sources, layerGroupNames) {
+function initTileFactory(size, sources, styleGroups) {
   // Input size is the pixel size of the canvas used for vector rendering
   // Input sources is an OBJECT of TileJSON descriptions of tilesets
-  // Input layerGroupNames is an ARRAY of names for groupings of style layers
-  //   that will be rendered to separate canvases before compositing
+  // Input styleGroups is an ARRAY of objects { name, visible } for groupings of
+  // style layers that will be rendered to separate canvases before compositing
 
   // For now we ignore sources that don't have tile endpoints
   const tileSourceKeys = Object.keys(sources).filter( k => {
@@ -1940,9 +1920,9 @@ function initTileFactory(size, sources, layerGroupNames) {
     };
 
     // Add canvases for separate rendering of layer groups, if supplied
-    if (layerGroupNames && layerGroupNames.length > 1) {
-      layerGroupNames.forEach( group => {
-        tile.laminae[group] = initLamina(size);
+    if (styleGroups && styleGroups.length > 1) {
+      styleGroups.forEach( group => {
+        tile.laminae[group.name] = initLamina(size);
       });
     }
 
@@ -3367,7 +3347,7 @@ function intersects(box1, box2) {
   return true;
 }
 
-function initRenderer$1(canvSize, styleLayers, styleGroups, sprite) {
+function initRenderer(canvSize, styleLayers, styleGroups, sprite) {
   // Input canvSize is an integer, for the pixel size of the (square) tiles
   // Input styleLayers points to the .layers property of a Mapbox style document
   //   Specification: https://docs.mapbox.com/mapbox-gl-js/style-spec/
@@ -3393,24 +3373,25 @@ function initRenderer$1(canvSize, styleLayers, styleGroups, sprite) {
   // Sort styles into groups
   const styles = {};
   styleGroups.forEach( group => {
-    styles[group] = sortStyleGroup(styleLayers, group);
+    styles[group.name] = sortStyleGroup(styleLayers, group.name);
   });
 
   var getLamina, composite;
   if (styleGroups.length > 1) { 
     // Define function to return the appropriate lamina (partial rendering)
-    getLamina = (tile, group) => tile.laminae[group];
+    getLamina = (tile, groupName) => tile.laminae[groupName];
     // Define function to composite all laminae canvases into the main canvas
     composite = (tile) => {
       tile.ctx.clearRect(0, 0, canvSize, canvSize);
       styleGroups.forEach( group => {
-        tile.ctx.drawImage(tile.laminae[group].img, 0, 0);
+        if (!group.visible) return;
+        tile.ctx.drawImage(tile.laminae[group.name].img, 0, 0);
       });
       tile.rendered = true;
     };
   } else {
     // Only one group of style layers. Render directly to the main canvas
-    getLamina = (tile, group) => tile;
+    getLamina = (tile, groupName) => tile;
     // Compositing is not needed: return a dummy no-op function
     composite = (tile) => true;
   }
@@ -3421,18 +3402,18 @@ function initRenderer$1(canvSize, styleLayers, styleGroups, sprite) {
     canvas,
   };
 
-  function drawGroup(tile, group = "none", callback = () => undefined) {
-    if (!styles[group]) return callback(null, tile);
+  function drawGroup(tile, groupName = "none", callback = () => undefined) {
+    if (!styles[groupName]) return callback(null, tile);
 
     // Clear context and bounding boxes
     ctx.clearRect(0, 0, canvSize, canvSize);
     labeler.clearBoxes();
 
     // Draw the layers
-    styles[group].forEach( style => drawLayer(style, tile.z, tile.sources) );
+    styles[groupName].forEach( style => drawLayer(style, tile.z, tile.sources) );
 
     // Copy the rendered image to the tile
-    let lamina = getLamina(tile, group);
+    let lamina = getLamina(tile, groupName);
     lamina.ctx.clearRect(0, 0, canvSize, canvSize);
     lamina.ctx.drawImage(canvas, 0, 0);
     
@@ -3488,12 +3469,20 @@ function init(params) {
   var callback = params.callback || ( () => undefined );
 
   // Declare some variables & methods that will be defined inside a callback
-  var styleGroups, tileFactory, renderer, t1, t2;
+  var groupNames, tileFactory, renderer, t1, t2;
+  var styleGroups = [];
+
+  function setGroupVisibility(name, visibility) {
+    var group = styleGroups.find(group => group.name === name);
+    if (group) group.visible = visibility;
+  }
 
   const api = { // Initialize properties, update when styles load
     style: {},    // WARNING: directly modifiable from calling program
     create: () => undefined,
     drawGroup: (group) => undefined,
+    hideGroup: (name) => setGroupVisibility(name, false),
+    showGroup: (name) => setGroupVisibility(name, true),
     composite: () => undefined,
     redraw: () => undefined,
     groups: [],
@@ -3509,13 +3498,13 @@ function init(params) {
     if (err) callback(err);
 
     // Get layer group names from styleDoc
-    styleGroups = styleDoc.layers
+    groupNames = styleDoc.layers
       .map( layer => layer["tilekiln-group"] || "none" )
       .filter(uniq);
 
     // Make sure the groups in order, not interleaved
-    var groupCheck = styleGroups.sort().filter(uniq);
-    if (styleGroups.length !== groupCheck.length) {
+    var groupCheck = groupNames.sort().filter(uniq);
+    if (groupNames.length !== groupCheck.length) {
       err = "tilekiln setup: Input layer groups are not in order!";
       return callback(err);
     }
@@ -3524,17 +3513,24 @@ function init(params) {
       return ( !i || x !== a[i-1] ); // x is not a repeat of the previous value
     }
 
+    // Construct an object to track visibility of each group
+    styleGroups = groupNames.map( name => {
+      return { name, visible: true };
+    });
+
     tileFactory = initTileFactory(canvSize, styleDoc.sources, styleGroups);
-    renderer = initRenderer$1(canvSize, styleDoc.layers, styleGroups, styleDoc.sprite);
+    renderer = initRenderer(canvSize, styleDoc.layers, styleGroups, styleDoc.sprite);
 
     // Update api
+    // TODO: we could initialize renderer without styles, then send it the
+    // styles when ready. This could avoid the need to rewrite the API.
     api.style = styleDoc;
     api.create = create;
     api.drawGroup = renderer.drawGroup;
     api.composite = renderer.composite;
     api.redraw = drawAll;
     api.ready = true;
-    api.groups = styleGroups;
+    api.groups = groupNames;
 
     return callback(null, api);
   }
@@ -3553,13 +3549,45 @@ function init(params) {
   }
 
   function drawAll(tile, callback = () => true) {
-    styleGroups.forEach( group => renderer.drawGroup(tile, group) );
+    styleGroups.forEach( group => renderer.drawGroup(tile, group.name) );
     renderer.composite(tile);
     callback(null, tile);
   }
 }
 
-function initMap(params, renderer, coords, tiles) {
+function initRenderer$1(context, params) {
+  const size = params.tileSize;
+
+  // Resize drawingbuffer to fit the specified number of tiles
+  context.canvas.width = params.width;
+  context.canvas.height = params.height;
+
+  return {
+    draw,
+    clear,
+  };
+
+  function clear() {
+    return context.clearRect(0, 0, params.width, params.height);
+  }
+
+  function draw(tilebox, ix, iy) {
+    context.drawImage(
+        tilebox.tile.img,  // Image to read, and paint to the canvas
+        tilebox.sx,        // First x-pixel in tile to read
+        tilebox.sy,        // First y-pixel in tile to read
+        tilebox.sw,        // Number of pixels to read in x
+        tilebox.sw,        // Number of pixels to read in y
+        ix * size,         // First x-pixel in canvas to paint
+        iy * size,         // First y-pixel in canvas to paint
+        size,              // Number of pixels to paint in x
+        size               // Number of pixels to paint in y
+        );
+    return;
+  }
+}
+
+function initGrid(params, context, coords, tiles) {
   const oneTileComplete = 1. / params.nx / params.ny;
 
   const grid = {
@@ -3574,11 +3602,15 @@ function initMap(params, renderer, coords, tiles) {
   };
   grid.reset(); // Initialize array of tileboxes
 
-  // Return methods for drawing a 2D map
+  // Initialize renderer
+  const renderer = initRenderer$1(context, params);
+
+  // Return methods for updating and rendering a grid of tiles
   return {
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
     reset: () => grid.reset(),
+    clear: renderer.clear,
     drawTiles,
   };
 
@@ -4932,19 +4964,18 @@ function init$1(userParams, context, overlay) {
   // Setup tile coordinates and associated methods
   const coords = initTileCoords(params);
 
-  // Initialize tile factory and renderer
+  // Initialize tile factory
   const factory = init({
     size: params.tileSize,
     style: params.style,
     token: params.token,
   });
-  const renderer = initRenderer(context, params);
 
   // Initialize a cache of loaded tiles
   const tiles = initTileCache(params.tileSize, factory);
 
   // Initialize grid of rendered tiles
-  const map = initMap(params, renderer, coords, tiles);
+  const grid = initGrid(params, context, coords, tiles);
 
   // Initialize bounding box QC overlay
   var boxQC;
@@ -4954,7 +4985,7 @@ function init$1(userParams, context, overlay) {
   // Return methods for drawing a 2D map
   return {
     drawTiles,
-    loaded: map.loaded,
+    loaded: grid.loaded,
     move: function(dz, dx, dy) {
       var changed = coords.move(dz, dx, dy);
       if (changed) reset();
@@ -4963,15 +4994,27 @@ function init$1(userParams, context, overlay) {
     toLocal: coords.toLocal,
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
-    boxes: map.boxes,
+    boxes: grid.boxes,
     style: () => factory.style,
     redraw,
-    select: initSelector(params.tileSize, map.boxes),
+    hideGroup,
+    showGroup,
+    select: initSelector(params.tileSize, grid.boxes),
   };
 
   function redraw(group) {
     tiles.unrender(group);
-    map.reset();
+    grid.reset();
+  }
+
+  function hideGroup(group) {
+    tiles.hideGroup(group);
+    grid.reset();
+  }
+
+  function showGroup(group) {
+    tiles.showGroup(group);
+    grid.reset();
   }
 
   function fitBoundingBox(p1, p2) {
@@ -4982,15 +5025,15 @@ function init$1(userParams, context, overlay) {
   }
 
   function drawTiles() {
-    var updated = map.drawTiles();
+    var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
     tiles.prune(coords.tileDistance, 3.5);
     return updated;
   }
 
   function reset() {
-    renderer.clear();
-    map.reset();
+    grid.reset();
+    grid.clear();
     if (haveVector) boxQC.reset();
     return;
   }

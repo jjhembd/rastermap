@@ -35,6 +35,18 @@ export function main() {
   var loaded = document.getElementById("completion");
   var tooltip = document.getElementById("tooltip");
 
+  // Set up toggle for Burwell polygon visibility
+  var burwellVisibility = true;
+  var toggleBurwell = document.getElementById("toggleBurwell");
+  toggleBurwell.addEventListener("click", function(click) {
+    burwellVisibility = !burwellVisibility;
+    if (burwellVisibility) {
+      map.showGroup("burwell");
+    } else {
+      map.hideGroup("burwell");
+    }
+  }, false);
+
   // Get ready to print out feature info
   var info = document.getElementById("info");
 

@@ -1,8 +1,7 @@
 import { initTileCoords } from "./coords.js";
 import { initTileCache } from "./cache.js";
-import { initRenderer } from "./renderer.js";
 import * as tilekiln from 'tilekiln';
-import { initMap } from "./map.js";
+import { initGrid } from "./grid.js";
 import { initBoxQC } from "./boxqc.js";
 import { initSelector } from "./selection.js";
 
@@ -45,19 +44,18 @@ export function init(userParams, context, overlay) {
   // Setup tile coordinates and associated methods
   const coords = initTileCoords(params);
 
-  // Initialize tile factory and renderer
+  // Initialize tile factory
   const factory = tilekiln.init({
     size: params.tileSize,
     style: params.style,
     token: params.token,
   });
-  const renderer = initRenderer(context, params);
 
   // Initialize a cache of loaded tiles
   const tiles = initTileCache(params.tileSize, factory);
 
   // Initialize grid of rendered tiles
-  const map = initMap(params, renderer, coords, tiles);
+  const grid = initGrid(params, context, coords, tiles);
 
   // Initialize bounding box QC overlay
   var boxQC;
@@ -67,7 +65,7 @@ export function init(userParams, context, overlay) {
   // Return methods for drawing a 2D map
   return {
     drawTiles,
-    loaded: map.loaded,
+    loaded: grid.loaded,
     move: function(dz, dx, dy) {
       var changed = coords.move(dz, dx, dy);
       if (changed) reset();
@@ -76,15 +74,27 @@ export function init(userParams, context, overlay) {
     toLocal: coords.toLocal,
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
-    boxes: map.boxes,
+    boxes: grid.boxes,
     style: () => factory.style,
     redraw,
-    select: initSelector(params.tileSize, map.boxes),
+    hideGroup,
+    showGroup,
+    select: initSelector(params.tileSize, grid.boxes),
   };
 
   function redraw(group) {
     tiles.unrender(group);
-    map.reset();
+    grid.reset();
+  }
+
+  function hideGroup(group) {
+    tiles.hideGroup(group);
+    grid.reset();
+  }
+
+  function showGroup(group) {
+    tiles.showGroup(group);
+    grid.reset();
   }
 
   function fitBoundingBox(p1, p2) {
@@ -95,15 +105,15 @@ export function init(userParams, context, overlay) {
   }
 
   function drawTiles() {
-    var updated = map.drawTiles();
+    var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
     tiles.prune(coords.tileDistance, 3.5);
     return updated;
   }
 
   function reset() {
-    renderer.clear();
-    map.reset();
+    grid.reset();
+    grid.clear();
     if (haveVector) boxQC.reset();
     return;
   }
