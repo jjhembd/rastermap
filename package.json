@@ -10,8 +10,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run build-module && npm run build-examples",
-    "build-module": "rollup -c build/rollup.config.js",
-    "build-examples": "cd examples && rollup -c"
+    "build-module": "npm run rollup-module && npm run dist-worker",
+    "rollup-module": "rollup -c build/rollup.config.js",
+    "dist-worker": "cp node_modules/tilekiln/dist/worker.bundle.js dist/",
+    "build-examples": "npm run rollup-examples && npm run copy-worker",
+    "rollup-examples": "cd examples && rollup -c",
+    "copy-worker": "echo examples/*/ | xargs -n 1 cp dist/worker.bundle.js"
   },
   "repository": {
     "type": "git",
