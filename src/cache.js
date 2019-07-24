@@ -23,11 +23,6 @@ export function initTileCache(size, tileFactory) {
 
     // If the tile exists and is ready, return it (along with the wrapped info)
     if (tile && tile.rendered) return tilebox;
-    if (tile && tile.loaded) {
-      //tileFactory.redraw(tile);
-      reRender(tile);
-      return tilebox;
-    }
 
     // Looks like the tile wasn't ready. Try using the parent tile
     if (z > 0 && sw > 1) { // Don't look too far back
@@ -48,6 +43,11 @@ export function initTileCache(size, tileFactory) {
     if (!tiles[id]) { 
       let newTile = tileFactory.create(z, x, y);
       if (newTile) tiles[id] = newTile;
+    } else if (tile.loaded && !tile.rendered && !tile.rendering) { 
+      // Tile exists but isn't rendered and is not in the middle of rendering
+      // We now start redrawing it. Probably won't finish till later, BUT
+      // what if it finishes right away? (i.e., just a recomposite or similar)
+      tileFactory.redraw(tile);
     }
 
     return (tilebox && tilebox.tile && tilebox.tile.rendered)
@@ -99,17 +99,5 @@ export function initTileCache(size, tileFactory) {
   function showGroup(group) {
     tileFactory.showGroup(group);
     Object.values(tiles).forEach( tile => { tile.rendered = false; } );
-  }
-
-  function reRender(tile) {
-    var groups = tileFactory.groups;
-    if (groups.length <= 1) return tileFactory.redraw(tile);
-
-    groups.forEach(group => {
-      if (tile.laminae[group].rendered) return;
-      tileFactory.drawGroup(tile, group);
-    });
-
-    tileFactory.composite(tile);
   }
 }
