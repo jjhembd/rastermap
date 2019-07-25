@@ -107,7 +107,7 @@ export function init(userParams, context, overlay) {
   function drawTiles() {
     var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
-    tiles.prune(coords.tileDistance, 3.5);
+    tiles.prune(coords.tileDistance, 1.5);
     return updated;
   }
 
