@@ -267,18 +267,21 @@ function initTileCache(size, tileFactory) {
 
   function prune(metric, threshold) {
     // Remove tiles far from current view (as measured by metric)
+    var numTiles = 0;
 
     for ( let id in tiles ) {
       let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
-      if (distance >= threshold) {
-        if (!tiles[id].loaded) {
-          console.log("rastermap cache: canceling load for tile " + id);
-          tiles[id].cancelLoad();
-        }
-        delete tiles[id];
+      if (distance < threshold) {
+        numTiles ++;
+        continue;
       }
+      if (!tiles[id].loaded) {
+        console.log("rastermap cache: canceling load for tile " + id);
+        tiles[id].cancelLoad();
+      }
+      delete tiles[id];
     }
-    return;
+    return numTiles;
   }
 
   function unrender(group) {
@@ -2247,6 +2250,7 @@ function init(params) {
   // Declare some variables & methods that will be defined inside a callback
   var groupNames, tileFactory, renderer, t0, t1, t2;
   var styleGroups = [];
+  var activeDrawCalls = 0;
 
   function setGroupVisibility(name, visibility) {
     var group = styleGroups.find(group => group.name === name);
@@ -2259,6 +2263,7 @@ function init(params) {
     hideGroup: (name) => setGroupVisibility(name, false),
     showGroup: (name) => setGroupVisibility(name, true),
     redraw: () => undefined,
+    activeDrawCalls: () => activeDrawCalls,
     groups: [],
     ready: false,
   };
@@ -2342,6 +2347,7 @@ function init(params) {
 
     // Flag this tile as in the process of rendering
     tile.rendering = true;
+    activeDrawCalls ++;
 
     //var numToDo = styleGroups.length;
     //styleGroups.forEach(group => {
@@ -2372,6 +2378,7 @@ function init(params) {
 
       tile.rendered = true;
       tile.rendering = false;
+      activeDrawCalls --;
 
       if (!reportTime) return callback(null, tile);
       t2 = performance.now();
@@ -3806,6 +3813,7 @@ function init$1(userParams, context, overlay) {
 
   // Initialize a cache of loaded tiles
   const tiles = initTileCache(params.tileSize, factory);
+  var numCachedTiles = 0;
 
   // Initialize grid of rendered tiles
   const grid = initGrid(params, context, coords, tiles);
@@ -3833,6 +3841,8 @@ function init$1(userParams, context, overlay) {
     hideGroup,
     showGroup,
     select: initSelector(params.tileSize, grid.boxes),
+    activeDrawCalls: factory.activeDrawCalls,
+    numCachedTiles: () => numCachedTiles,
   };
 
   function redraw(group) {
@@ -3860,7 +3870,7 @@ function init$1(userParams, context, overlay) {
   function drawTiles() {
     var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
-    tiles.prune(coords.tileDistance, 1.5);
+    numCachedTiles = tiles.prune(coords.tileDistance, 1.5);
     return updated;
   }
 

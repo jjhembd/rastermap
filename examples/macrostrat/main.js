@@ -81,8 +81,10 @@ export function main() {
 //      }
 //      map.redraw("highlight");
 //    }
+    info.innerHTML = "Cached tiles: " + map.numCachedTiles() + "<br>";
+    info.innerHTML += "Active draw calls: " + map.activeDrawCalls() + "<br>";
 
-    info.innerHTML = (selected && selected.properties)
+    info.innerHTML += (selected && selected.properties)
       ? "<pre>" + JSON.stringify(selected.properties, null, 2) + "</pre>"
       : "";
 

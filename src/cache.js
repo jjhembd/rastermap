@@ -57,18 +57,21 @@ export function initTileCache(size, tileFactory) {
 
   function prune(metric, threshold) {
     // Remove tiles far from current view (as measured by metric)
+    var numTiles = 0;
 
     for ( let id in tiles ) {
       let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
-      if (distance >= threshold) {
-        if (!tiles[id].loaded) {
-          console.log("rastermap cache: canceling load for tile " + id);
-          tiles[id].cancelLoad();
-        }
-        delete tiles[id];
+      if (distance < threshold) {
+        numTiles ++;
+        continue;
       }
+      if (!tiles[id].loaded) {
+        console.log("rastermap cache: canceling load for tile " + id);
+        tiles[id].cancelLoad();
+      }
+      delete tiles[id];
     }
-    return;
+    return numTiles;
   }
 
   function unrender(group) {

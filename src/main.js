@@ -53,6 +53,7 @@ export function init(userParams, context, overlay) {
 
   // Initialize a cache of loaded tiles
   const tiles = initTileCache(params.tileSize, factory);
+  var numCachedTiles = 0;
 
   // Initialize grid of rendered tiles
   const grid = initGrid(params, context, coords, tiles);
@@ -80,6 +81,8 @@ export function init(userParams, context, overlay) {
     hideGroup,
     showGroup,
     select: initSelector(params.tileSize, grid.boxes),
+    activeDrawCalls: factory.activeDrawCalls,
+    numCachedTiles: () => numCachedTiles,
   };
 
   function redraw(group) {
@@ -107,7 +110,7 @@ export function init(userParams, context, overlay) {
   function drawTiles() {
     var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
-    tiles.prune(coords.tileDistance, 1.5);
+    numCachedTiles = tiles.prune(coords.tileDistance, 1.5);
     return updated;
   }
 
