@@ -60,7 +60,13 @@ export function initTileCache(size, tileFactory) {
 
     for ( let id in tiles ) {
       let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
-      if (distance >= threshold) delete tiles[id];
+      if (distance >= threshold) {
+        if (!tiles[id].loaded) {
+          console.log("rastermap cache: canceling load for tile " + id);
+          tiles[id].cancelLoad();
+        }
+        delete tiles[id];
+      }
     }
     return;
   }

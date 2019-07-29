@@ -270,7 +270,13 @@ function initTileCache(size, tileFactory) {
 
     for ( let id in tiles ) {
       let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
-      if (distance >= threshold) delete tiles[id];
+      if (distance >= threshold) {
+        if (!tiles[id].loaded) {
+          console.log("rastermap cache: canceling load for tile " + id);
+          tiles[id].cancelLoad();
+        }
+        delete tiles[id];
+      }
     }
     return;
   }
@@ -326,23 +332,18 @@ function xhrGet(href, type, callback) {
   req.open('get', href);
   req.send();
 
-  var err = {};
-
   function errHandler(e) {
-    err.type = e.type;
-    err.message = "XMLHttpRequest ended with an " + e.type;
+    let err = "XMLHttpRequest ended with an " + e.type;
     return callback(err);
   }
   function loadHandler(e) {
     if (req.responseType !== type) {
-      err.type = "TypeError";
-      err.message = "XMLHttpRequest: Wrong responseType. Expected " +
+      let err = "XMLHttpRequest: Wrong responseType. Expected " +
         type + ", got " + req.responseType;
       return callback(err, req.response);
     }
-    if (req.status === 404) {
-      err.type = 404;
-      err.message = "XMLHttpRequest: HTTP 404 error from " + href;
+    if (req.status !== 200) {
+      let err = "XMLHttpRequest: HTTP " + req.status + " error from " + href;
       return callback(err, req.response);
     }
     return callback(null, req.response);
@@ -359,7 +360,7 @@ function readJSON(dataHref, callback) {
   xhrGet(dataHref, "text", parseJSON);
 
   function parseJSON(err, data) {
-    if (err) return callback(err.message, data);
+    if (err) return callback(err, data);
     callback(null, JSON.parse(data), dataHref);
   }
 }
@@ -545,9 +546,7 @@ function expandTileURL(url, token) {
 // Inspired by https://codeburst.io/promises-for-the-web-worker-9311b7831733
 function initWorker(codeHref) {
 
-  const callbacks = {};
-  const payloads = {};
-  const headers = {};
+  const tasks = {};
   let globalMsgId = 0;
   let activeTasks = 0;
 
@@ -555,51 +554,58 @@ function initWorker(codeHref) {
   worker.onmessage = handleMsg;
 
   return {
-    startTask: sendMsg,
+    startTask,
+    cancelTask,
     numActive: () => activeTasks,
     terminate: worker.terminate,
   }
 
-  function sendMsg(payload, callback) {
+  function startTask(payload, callback) {
     activeTasks ++;
     const msgId = globalMsgId++;
-    const msg = { id: msgId, payload };
+    tasks[msgId] = { callback };
+    worker.postMessage({ id: msgId, type: "start", payload });
+    return msgId; // Returned ID can be used for later cancellation
+  }
 
-    callbacks[msgId] = callback;
-    worker.postMessage(msg);
+  function cancelTask(id) {
+    if (tasks[id]) worker.postMessage({ id, type: "cancel" });
+    return delete tasks[id];
   }
 
   function handleMsg(msgEvent) {
     const msg = msgEvent.data; // { id, type, key, payload }
-    const callback = callbacks[msg.id]; // What if it doesn't exist?
+    const task = tasks[msg.id];
+    if (!task) return worker.postMessage({ id: msg.id, type: "cancel" });
 
     switch (msg.type) {
       case "error":
-        return callback(msg.payload);
+        task.callback(msg.payload);
+        break; // Clean up below
+
       case "header":
-        headers[msg.id] = msg.payload;
-        payloads[msg.id] = initJSON(msg.payload);
-        return;
-      case "data": {
-        let features = payloads[msg.id][msg.key].features;
+        task.header = msg.payload;
+        task.result = initJSON(msg.payload);
+        return worker.postMessage({ id: msg.id, type: "continue" });
+
+      case "data": 
+        let features = task.result[msg.key].features;
         msg.payload.forEach( feature => features.push(feature) );
-        return;
-      }
+        return worker.postMessage({ id: msg.id, type: "continue" });
+
       case "done":
-        let dataOK = checkJSON(payloads[msg.id], headers[msg.id]);
-        if (!dataOK) return callback("ERROR: JSON from worker failed checks!");
-        break; // Process result below this loop
+        let err = checkJSON(task.result, task.header)
+          ? null
+          : "ERROR: JSON from worker failed checks!";
+        task.callback(err, task.result);
+        break; // Clean up below
+
       default:
-        delete payloads[msg.id];
-        delete headers[msg.id];
-        return callback("ERROR: worker sent bad message type!");
+        task.callback("ERROR: worker sent bad message type!");
+        break; // Clean up below
     }
 
-    callback(null, payloads[msg.id]);
-
-    delete callbacks[msg.id];
-    delete payloads[msg.id];
-    delete headers[msg.id];
+    delete tasks[msg.id];
     activeTasks --;
   }
 }
@@ -620,11 +626,7 @@ function checkJSON(json, header) {
   }
 }
 
-//import { readMVT, loadImage } from "./read.js";
-
-// TODO: Move this to a worker thread. readMVT is CPU intensive
-// Also, convert images to ImageBitmaps?
-function initTileFactory(size, sources, styleGroups, reader) {
+function initTileFactory(size, sources, styleGroups, loader) {
   // Input size is the pixel size of the canvas used for vector rendering
   // Input sources is an OBJECT of TileJSON descriptions of tilesets
   // Input styleGroups is an ARRAY of objects { name, visible } for groupings of
@@ -636,11 +638,15 @@ function initTileFactory(size, sources, styleGroups, reader) {
   });
 
   function orderTile(z, x, y, callback = () => true) {
+    const loadTasks = {};
+    var numToDo = tileSourceKeys.length;
     var baseLamina = initLamina(size);
+
     const tile = {
       z, x, y,
       sources: {},
       loaded: false,
+      cancelLoad,
       img: baseLamina.img,
       ctx: baseLamina.ctx,
       rendering: baseLamina.rendering,
@@ -655,7 +661,6 @@ function initTileFactory(size, sources, styleGroups, reader) {
       });
     }
 
-    var numToDo = tileSourceKeys.length;
     tileSourceKeys.forEach( loadTile );
 
     function loadTile(srcKey) {
@@ -665,16 +670,24 @@ function initTileFactory(size, sources, styleGroups, reader) {
         //readMVT( tileHref, size, (err, data) => checkData(err, srcKey, data) );
         let readCallback = (err, data) => checkData(err, srcKey, data);
         let readPayload = { href: tileHref, size: size };
-        reader(readPayload, readCallback);
+        loadTasks[srcKey] = loader.startTask(readPayload, readCallback);
       } else if (src.type === "raster") {
         loadImage( tileHref, (err, data) => checkData(err, srcKey, data) );
       }
     }
 
+    function cancelLoad() {
+      Object.values(loadTasks).forEach(task => loader.cancelTask(task));
+    }
+
     function checkData(err, key, data) {
-      if (err) return callback(err);
+      // If data retrieval errors, don't stop. We could be out of the range of
+      // one layer, but we may still be able to render the other layers
+      if (err) console.log(err);
+      // TODO: maybe stop if all layers have errors?
 
       tile.sources[key] = data;
+      delete loadTasks[key];
       if (--numToDo > 0) return;
 
       tile.loaded = true;
@@ -2141,6 +2154,8 @@ function initRenderer(canvSize, styleLayers, styleGroups, sprite, chains) {
     if (type === "background") return roller.fillBackground(ctx, style, zoom);
 
     var source = sources[ style["source"] ];
+    if (!source) return;
+
     if (type === "raster") return roller.drawRaster(ctx, style, zoom, source);
 
     var mapLayer = source[ style["source-layer"] ];
@@ -2284,7 +2299,7 @@ function init(params) {
     });
 
     tileFactory = initTileFactory(canvSize, styleDoc.sources, 
-      styleGroups, readThread.startTask);
+      styleGroups, readThread);
     renderer = initRenderer(canvSize, styleDoc.layers, 
       styleGroups, styleDoc.sprite, chains);
 
