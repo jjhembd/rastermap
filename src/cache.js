@@ -60,15 +60,21 @@ export function initTileCache(size, tileFactory) {
     var numTiles = 0;
 
     for ( let id in tiles ) {
-      let distance = metric(tiles[id].z, tiles[id].x, tiles[id].y);
-      if (distance < threshold) {
+      let tile = tiles[id];
+      tile.priority = metric(tile.z, tile.x, tile.y);
+      if (tile.priority < threshold) {
         numTiles ++;
+        if (tile.rendering) tileFactory.priorities[tile.id] = tile.priority;
         continue;
       }
-      if (!tiles[id].loaded) {
+
+      // Tile is too far away. Cancel any ongoing work and delete it
+      if (!tile.loaded) {
         console.log("rastermap cache: canceling load for tile " + id);
-        tiles[id].cancelLoad();
+        tile.cancelLoad();
       }
+      tile.canceled = true;
+      delete tileFactory.priorities[tile.id];
       delete tiles[id];
     }
     return numTiles;
