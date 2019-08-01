@@ -63,6 +63,9 @@ export function init(userParams, context, overlay) {
   var haveVector = overlay instanceof CanvasRenderingContext2D;
   if (haveVector) boxQC = initBoxQC(overlay, coords, params.width, params.height);
 
+  // Initialize feature selection methods
+  const selector = initSelector(params.tileSize, grid.boxes);
+
   // Return methods for drawing a 2D map
   return {
     drawTiles,
@@ -80,7 +83,8 @@ export function init(userParams, context, overlay) {
     redraw,
     hideGroup,
     showGroup,
-    select: initSelector(params.tileSize, grid.boxes),
+    getTilePos: selector.getTilePos,
+    select: selector.select,
     activeDrawCalls: factory.activeDrawCalls,
     numCachedTiles: () => numCachedTiles,
   };
