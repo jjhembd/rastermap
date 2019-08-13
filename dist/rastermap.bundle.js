@@ -1,25 +1,17 @@
 function initTileCoords( params ) {
-  // Initialize position and zoom of the map. All are integers
-  var zoom = params.zoom;
-  var nTiles = 2 ** zoom;
-  var xTile0 = params.center[0] * nTiles - params.nx / 2;
-  xTile0 = wrap(Math.round(xTile0), nTiles);
-  var yTile0 = params.center[1] * nTiles - params.ny / 2;
-  yTile0 = wrap(Math.round(yTile0), nTiles);
+  // Define a min zoom (if not supplied), such that there are always enough
+  // tiles to cover the grid without repeating
+  params.minZoom = (params.minZoom === undefined)
+    ? Math.floor( Math.min(Math.log2(params.nx), Math.log2(params.ny)) )
+    : params.minZoom;
 
-  // Transform parameters
+  // Declare transform parameters
+  var zoom, nTiles, xTile0, yTile0;
   const origin = new Float64Array(2);
   const scale = new Float64Array(2);
 
-  function updateTransform() {
-    nTiles = 2 ** zoom;
-    origin[0] = xTile0 / nTiles;
-    origin[1] = yTile0 / nTiles;
-    scale[0] = nTiles / params.nx; // Problematic if < 1 ?
-    scale[1] = nTiles / params.ny;
-  }
-  // Initialize transform
-  updateTransform();
+  // Set initial values
+  setCenterZoom(params.center, params.zoom);
 
   return {
     // Info about current map state
@@ -32,6 +24,7 @@ function initTileCoords( params ) {
     tileDistance,
 
     // Methods to update map state
+    setCenterZoom,
     fitBoundingBox,
     move,
   };
@@ -41,6 +34,25 @@ function initTileCoords( params ) {
     zxy[0] = zoom;
     zxy[1] = wrap(xTile0 + ix, nTiles);
     zxy[2] = wrap(yTile0 + iy, nTiles);
+    return;
+  }
+
+  function toLocal(local, global) {
+    // Input global and output local are pointers to 2-element arrays [X,Y]
+
+    // Translate to local origin. Question: should we just use vec2 routines?
+    local[0] = global[0] - origin[0];
+    local[1] = global[1] - origin[1];
+
+    // Check for wrapping across antimeridian 
+    // NOTE: if point is to left of origin, it will be wrapped to right?
+    // We might prefer to put it as close as possible to the center
+    local[0] = wrap(local[0], 1.0);
+
+    // Scale to the size of the local map
+    local[0] *= scale[0];
+    local[1] *= scale[1];
+
     return;
   }
 
@@ -96,23 +108,29 @@ function initTileCoords( params ) {
     return hdist - 1.0 + 1.0 / zoomFac;
   }
 
-  function toLocal(local, global) {
-    // Input global and output local are pointers to 2-element arrays [X,Y]
+  function setCenterZoom(center, newZoom) {
+    // 0. Remember old values
+    var oldZ = zoom;
+    var oldX = xTile0;
+    var oldY = yTile0;
 
-    // Translate to local origin. Question: should we just use vec2 routines?
-    local[0] = global[0] - origin[0];
-    local[1] = global[1] - origin[1];
+    // 1. Make sure the supplied zoom is within range and an integer
+    zoom = Math.min(Math.max(params.minZoom, newZoom), params.maxZoom);
+    zoom = Math.floor(zoom); // TODO: should this be Math.round() ?
+    nTiles = 2 ** zoom; // Number of tiles at this zoom level
 
-    // Check for wrapping across antimeridian 
-    // NOTE: if point is to left of origin, it will be wrapped to right?
-    // We might prefer to put it as close as possible to the center
-    local[0] = wrap(local[0], 1.0);
+    // 2. Find the integer tile numbers of the top left corner of the rectangle
+    //    whose center will be within 1/2 tile of (centerX, centerY)
+    xTile0 = Math.round(center[0] * nTiles - params.nx / 2.0);
+    xTile0 = wrap(xTile0, nTiles); // in case we crossed the antimeridian
 
-    // Scale to the size of the local map
-    local[0] *= scale[0];
-    local[1] *= scale[1];
+    yTile0 = Math.round(center[1] * nTiles - params.ny / 2.0);
+    yTile0 = Math.min(Math.max(0, yTile0), nTiles - params.ny); // Don't cross pole
 
-    return;
+    // 3. Return a flag indicating whether map parameters were updated
+    if (zoom === oldZ && xTile0 === oldX && yTile0 === oldY) return false;
+    updateTransform();
+    return true;
   }
 
   function fitBoundingBox(p1, p2) {
@@ -122,51 +140,36 @@ function initTileCoords( params ) {
     // if the box crosses the antimeridian (longitude = +/- PI)
     // TODO: update comment, verify code for non-Mercator projections
 
-    // Remember old values
-    var oldZ = zoom;
-    var oldX = xTile0;
-    var oldY = yTile0;
-
-    // 1. Calculate the maximum zoom level at which the bounding box will fit
-    // within the map. Note: we want to be able to pan without having to change
-    // zoom. Hence the bounding box must always fit within gridSize - 1.
-    // (allows panning to where p1[0] is near the right edge of a tile.)
-
     // Compute box width and height, with special handling for antimeridian
     var boxWidth = p2[0] - p1[0];
     if (boxWidth < 0) boxWidth += 1.0; // Crossing antimeridian
     var boxHeight = p2[1] - p1[1];
     if (boxHeight < 0) return false;
 
+    // Calculate the maximum zoom level at which the bounding box will fit
+    // within the map. Note: we want to be able to pan without having to change
+    // zoom. Hence the bounding box must always fit within gridSize - 1.
+    // (allows panning to where p1[0] is near the right edge of a tile.)
+
     // Width/height of a tile: 1 / 2 ** zoom. Hence we need
     //  (gridSize? - 1) / 2 ** zoom > boxSize in both X and Y.
-    // BUT we need the minimum zoom to have at least gridSize, i.e.,
-    // min zoom = log2(gridSize).
-    var zoomX = Math.log2( Math.max(params.nx, (params.nx - 1) / boxWidth) );
-    var zoomY = Math.log2( Math.max(params.ny, (params.ny - 1) / boxHeight) );
-    zoom = Math.floor( Math.min(zoomX, zoomY) );
-    zoom = Math.min(zoom, params.maxZoom);
-    nTiles = 2 ** zoom; // Number of tiles at this zoom level
+    var zoomX = Math.log2( (params.nx - 1) / boxWidth );
+    var zoomY = Math.log2( (params.ny - 1) / boxHeight );
 
-    // 2. Compute the tile indices of the center of the box
-    var centerX = (p1[0] + boxWidth / 2.0) * nTiles;
-    if (centerX > nTiles) centerX -= nTiles;
-    var centerY = 0.5 * (p1[1] + p2[1]) * nTiles;
+    // Compute the coordinates of the center of the box
+    var centerX = (p1[0] + boxWidth / 2.0);
+    if (centerX > 1) centerX -= 1;
+    var centerY = 0.5 * (p1[1] + p2[1]);
 
-    // 3. Find the integer tile numbers of the top left corner of the rectangle
-    //    whose center will be within 1/2 tile of (centerX, centerY)
-    xTile0 = Math.round(centerX - params.nx / 2.0);
-    xTile0 = wrap(xTile0, nTiles); // in case we crossed the antimeridian
-    yTile0 = Math.round(centerY - params.ny / 2.0);
-    // Don't let box cross poles
-    yTile0 = Math.min(Math.max(0, yTile0), nTiles - params.ny);
+    return setCenterZoom( [centerX, centerY], Math.min(zoomX, zoomY) );
+  }
 
-    // Return a flag indicating whether map parameters were updated
-    if (zoom !== oldZ || xTile0 !== oldX || yTile0 !== oldY) {
-      updateTransform();
-      return true;
-    }
-    return false;
+  function updateTransform() {
+    nTiles = 2 ** zoom;
+    origin[0] = xTile0 / nTiles;
+    origin[1] = yTile0 / nTiles;
+    scale[0] = nTiles / params.nx; // Problematic if < 1 ?
+    scale[1] = nTiles / params.ny;
   }
 
   function move(dz, dx, dy) {
@@ -2735,7 +2738,6 @@ exports.feature = feature;
  * // => geometry
  */
 function geometry(type, coordinates, options) {
-    if (options === void 0) { options = {}; }
     switch (type) {
         case "Point": return point(coordinates).geometry;
         case "LineString": return lineString(coordinates).geometry;

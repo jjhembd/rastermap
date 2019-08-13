@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Simple tiled map on an HTML Canvas",
   "main": "dist/rastermap.bundle.js",
+  "module": "dist/rastermap.bundle.js",
   "files": [
     "dist"
   ],
@@ -15,7 +16,8 @@
     "dist-worker": "cp node_modules/tilekiln/dist/worker.bundle.js dist/",
     "build-examples": "npm run rollup-examples && npm run copy-worker",
     "rollup-examples": "cd examples && rollup -c",
-    "copy-worker": "echo examples/*/ | xargs -n 1 cp dist/worker.bundle.js"
+    "copy-worker": "echo examples/*/ | xargs -n 1 cp dist/worker.bundle.js",
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
@@ -28,9 +30,9 @@
   "license": "MIT",
   "devDependencies": {
     "http-server": "^0.11.1",
-    "rollup": "^1.12.3",
-    "rollup-plugin-commonjs": "^10.0.0",
-    "rollup-plugin-node-resolve": "^4.2.1",
+    "rollup": "^1.19.4",
+    "rollup-plugin-commonjs": "^10.0.2",
+    "rollup-plugin-node-resolve": "^4.2.4",
     "touchy": "github:jjhembd/touchy"
   },
   "dependencies": {
