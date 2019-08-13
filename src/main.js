@@ -75,6 +75,7 @@ export function init(userParams, context, overlay) {
       if (changed) reset();
     },
     fitBoundingBox,
+    setCenterZoom,
     toLocal: coords.toLocal,
     getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
@@ -108,6 +109,12 @@ export function init(userParams, context, overlay) {
     var mapChanged = coords.fitBoundingBox(p1, p2);
     if (mapChanged) reset();
     if (haveVector) boxQC.draw(p1, p2, mapChanged);
+    return;
+  }
+
+  function setCenterZoom(center, zoom) {
+    var mapChanged = coords.setCenterZoom(center, zoom);
+    if (mapChanged) reset();
     return;
   }
 
