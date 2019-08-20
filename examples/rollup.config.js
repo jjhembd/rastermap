@@ -2,7 +2,9 @@ import resolve from 'rollup-plugin-node-resolve';
 
 export default [{
   input: 'raster/main.js',
-  plugins: [],
+  plugins: [
+    resolve(),
+  ],
   output: {
     file: 'raster/main.min.js',
     format: 'iife',
@@ -10,7 +12,9 @@ export default [{
   }
 }, {
   input: 'vector/main.js',
-  plugins: [],
+  plugins: [
+    resolve(),
+  ],
   output: {
     file: 'vector/main.min.js',
     format: 'iife',

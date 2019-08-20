@@ -2,10 +2,9 @@ import { initTileCoords } from "./coords.js";
 import { initTileCache } from "./cache.js";
 import * as tilekiln from 'tilekiln';
 import { initGrid } from "./grid.js";
-import { initBoxQC } from "./boxqc.js";
 import { initSelector } from "./selection.js";
 
-export function init(userParams, context, overlay) {
+export function init(userParams, context) {
   // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
@@ -58,65 +57,39 @@ export function init(userParams, context, overlay) {
   // Initialize grid of rendered tiles
   const grid = initGrid(params, context, coords, tiles);
 
-  // Initialize bounding box QC overlay
-  var boxQC;
-  var haveVector = overlay instanceof CanvasRenderingContext2D;
-  if (haveVector) boxQC = initBoxQC(overlay, coords, params.width, params.height);
-
   // Initialize feature selection methods
   const selector = initSelector(params.tileSize, grid.boxes);
 
-  // Return methods for drawing a 2D map
   return {
+    // Method to update the rendering of the map
     drawTiles,
-    loaded: grid.loaded,
-    move: function(dz, dx, dy) {
-      var changed = coords.move(dz, dx, dy);
-      if (changed) reset();
-    },
+
+    // Methods to set the position and zoom of the map
+    move: (dz, dx, dy) => { if (coords.move(dz, dx, dy)) grid.clear(); },
     fitBoundingBox,
     setCenterZoom,
+
+    // Methods to convert coordinates, or report conversion parameters
     toLocal: coords.toLocal,
-    getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
-    boxes: grid.boxes,
+    getScale: coords.getScale,
+
+    // Methods to interrogate or change the styling of the map
     style: () => factory.style,
-    redraw,
-    hideGroup,
-    showGroup,
+    redraw:    (group) => (tiles.unrender(group),  grid.reset()),
+    hideGroup: (group) => (tiles.hideGroup(group), grid.reset()),
+    showGroup: (group) => (tiles.showGroup(group), grid.reset()),
+
+    // Methods to interrogate the data in the map
+    boxes: grid.boxes,
     getTilePos: selector.getTilePos,
     select: selector.select,
+
+    // Methods to report ongoing tasks and memory usage
+    loaded: grid.loaded,
     activeDrawCalls: factory.activeDrawCalls,
     numCachedTiles: () => numCachedTiles,
   };
-
-  function redraw(group) {
-    tiles.unrender(group);
-    grid.reset();
-  }
-
-  function hideGroup(group) {
-    tiles.hideGroup(group);
-    grid.reset();
-  }
-
-  function showGroup(group) {
-    tiles.showGroup(group);
-    grid.reset();
-  }
-
-  function fitBoundingBox(p1, p2) {
-    var mapChanged = coords.fitBoundingBox(p1, p2);
-    if (mapChanged) reset();
-    if (haveVector) boxQC.draw(p1, p2, mapChanged);
-    return;
-  }
-
-  function setCenterZoom(center, zoom) {
-    var mapChanged = coords.setCenterZoom(center, zoom);
-    if (mapChanged) reset();
-    return;
-  }
 
   function drawTiles() {
     var updated = grid.drawTiles();
@@ -125,10 +98,13 @@ export function init(userParams, context, overlay) {
     return updated;
   }
 
-  function reset() {
-    grid.reset();
-    grid.clear();
-    if (haveVector) boxQC.reset();
-    return;
+  function fitBoundingBox(p1, p2) {
+    var mapChanged = coords.fitBoundingBox(p1, p2);
+    if (mapChanged) grid.clear();
+  }
+
+  function setCenterZoom(center, zoom) {
+    var mapChanged = coords.setCenterZoom(center, zoom);
+    if (mapChanged) grid.clear();
   }
 }

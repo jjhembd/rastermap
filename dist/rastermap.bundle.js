@@ -2497,7 +2497,7 @@ function initGrid(params, context, coords, tiles) {
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
     reset: () => grid.reset(),
-    clear: renderer.clear,
+    clear: () => (grid.reset(), renderer.clear()),
     drawTiles,
   };
 
@@ -2530,74 +2530,6 @@ function initGrid(params, context, coords, tiles) {
       }
     }
     return updated;
-  }
-}
-
-function initBoxQC(overlay, coords, width, height) {
-
-  // Resize canvases to fit the specified number of tiles
-  overlay.canvas.width = width;
-  overlay.canvas.height = height;
-
-  // Track status of bounding box for QC
-  const boxQC = [ [0,0], [0,0] ];
-  const pixQC = [ [0,0], [0,0] ];
-
-  // Return methods for drawing the QC
-  return {
-    draw,
-    reset,
-  };
-
-  function draw(p1, p2, mapChanged) {
-    // Check if bounding box changed since last call
-    var boxChanged = updateBox(boxQC, [p1, p2]);
-    if (!boxChanged && !mapChanged) return;
-
-    // Special case: box moved but map didn't
-    if (!mapChanged) overlay.clearRect(0, 0, width, height);
-
-    // Convert box to map pixels
-    coords.xyToMapPixels( pixQC[0], boxQC[0] );
-    coords.xyToMapPixels( pixQC[1], boxQC[1] );
-
-    // Draw bounding box on overlay
-    overlay.strokeStyle = "#FF0000";
-    overlay.lineWidth = 5;
-    overlay.strokeRect(
-        pixQC[0][0],
-        pixQC[0][1],
-        pixQC[1][0] - pixQC[0][0],
-        pixQC[1][1] - pixQC[0][1]
-        );
-
-    return;
-  }
-
-  function updateBox(bOld, bNew) {
-    var same = (
-        bNew[0][0] === bOld[0][0] &&
-        bNew[0][1] === bOld[0][1] &&
-        bNew[1][0] === bOld[1][0] &&
-        bNew[1][1] === bOld[1][1]
-        );
-    if (same) return false;
-
-    // Box changed. Do a deep copy
-    bOld[0][0] = bNew[0][0];
-    bOld[0][1] = bNew[0][1];
-    bOld[1][0] = bNew[1][0];
-    bOld[1][1] = bNew[1][1];
-    return true;
-  }
-
-  function reset() {
-    overlay.clearRect(0, 0, width, height);
-    boxQC[0][0] = 0;
-    boxQC[0][1] = 0;
-    boxQC[1][0] = 0;
-    boxQC[1][1] = 0;
-    return;
   }
 }
 
@@ -3822,7 +3754,7 @@ function initSelector(size, boxes) {
   }
 }
 
-function init$1(userParams, context, overlay) {
+function init$1(userParams, context) {
   // Check if we have a valid canvas rendering context
   var haveRaster = context instanceof CanvasRenderingContext2D;
   if (!haveRaster) {
@@ -3875,65 +3807,39 @@ function init$1(userParams, context, overlay) {
   // Initialize grid of rendered tiles
   const grid = initGrid(params, context, coords, tiles);
 
-  // Initialize bounding box QC overlay
-  var boxQC;
-  var haveVector = overlay instanceof CanvasRenderingContext2D;
-  if (haveVector) boxQC = initBoxQC(overlay, coords, params.width, params.height);
-
   // Initialize feature selection methods
   const selector = initSelector(params.tileSize, grid.boxes);
 
-  // Return methods for drawing a 2D map
   return {
+    // Method to update the rendering of the map
     drawTiles,
-    loaded: grid.loaded,
-    move: function(dz, dx, dy) {
-      var changed = coords.move(dz, dx, dy);
-      if (changed) reset();
-    },
+
+    // Methods to set the position and zoom of the map
+    move: (dz, dx, dy) => { if (coords.move(dz, dx, dy)) grid.clear(); },
     fitBoundingBox,
     setCenterZoom,
+
+    // Methods to convert coordinates, or report conversion parameters
     toLocal: coords.toLocal,
-    getScale: coords.getScale,
     xyToMapPixels: coords.xyToMapPixels,
-    boxes: grid.boxes,
+    getScale: coords.getScale,
+
+    // Methods to interrogate or change the styling of the map
     style: () => factory.style,
-    redraw,
-    hideGroup,
-    showGroup,
+    redraw:    (group) => (tiles.unrender(group),  grid.reset()),
+    hideGroup: (group) => (tiles.hideGroup(group), grid.reset()),
+    showGroup: (group) => (tiles.showGroup(group), grid.reset()),
+
+    // Methods to interrogate the data in the map
+    boxes: grid.boxes,
     getTilePos: selector.getTilePos,
     select: selector.select,
+
+    // Methods to report ongoing tasks and memory usage
+    loaded: grid.loaded,
     activeDrawCalls: factory.activeDrawCalls,
     numCachedTiles: () => numCachedTiles,
   };
-
-  function redraw(group) {
-    tiles.unrender(group);
-    grid.reset();
-  }
-
-  function hideGroup(group) {
-    tiles.hideGroup(group);
-    grid.reset();
-  }
-
-  function showGroup(group) {
-    tiles.showGroup(group);
-    grid.reset();
-  }
-
-  function fitBoundingBox(p1, p2) {
-    var mapChanged = coords.fitBoundingBox(p1, p2);
-    if (mapChanged) reset();
-    if (haveVector) boxQC.draw(p1, p2, mapChanged);
-    return;
-  }
-
-  function setCenterZoom(center, zoom) {
-    var mapChanged = coords.setCenterZoom(center, zoom);
-    if (mapChanged) reset();
-    return;
-  }
 
   function drawTiles() {
     var updated = grid.drawTiles();
@@ -3942,11 +3848,14 @@ function init$1(userParams, context, overlay) {
     return updated;
   }
 
-  function reset() {
-    grid.reset();
-    grid.clear();
-    if (haveVector) boxQC.reset();
-    return;
+  function fitBoundingBox(p1, p2) {
+    var mapChanged = coords.fitBoundingBox(p1, p2);
+    if (mapChanged) grid.clear();
+  }
+
+  function setCenterZoom(center, zoom) {
+    var mapChanged = coords.setCenterZoom(center, zoom);
+    if (mapChanged) grid.clear();
   }
 }
 

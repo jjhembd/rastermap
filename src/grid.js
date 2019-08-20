@@ -23,7 +23,7 @@ export function initGrid(params, context, coords, tiles) {
     loaded: () => grid.complete,
     boxes: grid.tileboxes,
     reset: () => grid.reset(),
-    clear: renderer.clear,
+    clear: () => (grid.reset(), renderer.clear()),
     drawTiles,
   };
 
