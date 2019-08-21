@@ -1,42 +1,59 @@
+import { initTileCoords } from "./coords.js";
 import { initRenderer } from "./renderer.js";
 
-export function initGrid(params, context, coords, tiles) {
-  const oneTileComplete = 1. / params.nx / params.ny;
-
-  const grid = {
-    complete: 0.0,
-    tileboxes: [],
-    reset: function() {
-      for (let iy = 0; iy < params.ny; iy++) {
-        this.tileboxes[iy] = [];
-      }
-      this.complete = 0.0;
-    },
-  }
-  grid.reset(); // Initialize array of tileboxes
-
-  // Initialize renderer
+export function initGrid(params, context, tiles) {
+  // Initialize coordinates and renderer
+  const coords = initTileCoords(params);
   const renderer = initRenderer(context, params);
+
+  // Initialize status tracking for tile loading
+  const oneTileComplete = 1. / params.nx / params.ny;
+  var complete = 0.0;
+
+  // Initialize array of tileboxes and function to reset it
+  const boxes = []; //Array(params.ny).fill([]);
+  function reset() {
+    //boxes.fill([]); // Doesn't work... not sure why not
+    for (let iy = 0; iy < params.ny; iy++) {
+      boxes[iy] = [];
+    }
+    complete = 0.0;
+  }
+  reset();
+  function clear() { // TODO: Do we ever need reset without clear?
+    reset();
+    renderer.clear();
+  }
 
   // Return methods for updating and rendering a grid of tiles
   return {
-    loaded: () => grid.complete,
-    boxes: grid.tileboxes,
-    reset: () => grid.reset(),
-    clear: () => (grid.reset(), renderer.clear()),
+    loaded: () => complete,
+    boxes,
+    reset,
+    clear,
     drawTiles,
+
+    move: (dz, dx, dy) => { if (coords.move(dz, dx, dy)) clear(); },
+    fitBoundingBox: (p1, p2) => { if (coords.fitBoundingBox(p1, p2)) clear(); },
+    setCenterZoom: (c, z) => { if (coords.setCenterZoom(c, z)) clear(); },
+
+    toLocal: coords.toLocal,
+    xyToMapPixels: coords.xyToMapPixels,
+    getScale: coords.getScale,
+
+    tileDistance: coords.tileDistance,
   };
 
   function drawTiles() {
     // Quick exit if map is already complete.
-    if (grid.complete === 1.0) return false; // No change!
+    if (complete === 1.0) return false; // No change!
 
     var updated = false;
     const zxy = [];
 
     // Loop over tiles in the map
     for (let iy = 0; iy < params.ny; iy++) {
-      var row = grid.tileboxes[iy];
+      var row = boxes[iy];
       for (let ix = 0; ix < params.nx; ix++) {
         coords.getZXY(zxy, ix, iy);
         var currentZ = (row[ix]) 
@@ -52,7 +69,7 @@ export function initGrid(params, context, coords, tiles) {
         renderer.draw(newbox, ix, iy);
         updated = true;
 
-        if (newbox.tile.z === zxy[0]) grid.complete += oneTileComplete;
+        if (newbox.tile.z === zxy[0]) complete += oneTileComplete;
       }
     }
     return updated;

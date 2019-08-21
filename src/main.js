@@ -1,5 +1,4 @@
-import { initTileCoords } from "./coords.js";
-import { initTileCache } from "./cache.js";
+import * as tileRack from 'tile-rack';
 import * as tilekiln from 'tilekiln';
 import { initGrid } from "./grid.js";
 import { initSelector } from "./selection.js";
@@ -40,9 +39,6 @@ export function init(userParams, context) {
   }
   console.log("map size: " + params.width + "x" + params.height);
 
-  // Setup tile coordinates and associated methods
-  const coords = initTileCoords(params);
-
   // Initialize tile factory
   const factory = tilekiln.init({
     size: params.tileSize,
@@ -51,11 +47,11 @@ export function init(userParams, context) {
   });
 
   // Initialize a cache of loaded tiles
-  const tiles = initTileCache(params.tileSize, factory);
+  const tiles = tileRack.init(params.tileSize, factory);
   var numCachedTiles = 0;
 
   // Initialize grid of rendered tiles
-  const grid = initGrid(params, context, coords, tiles);
+  const grid = initGrid(params, context, tiles); //coords, tiles);
 
   // Initialize feature selection methods
   const selector = initSelector(params.tileSize, grid.boxes);
@@ -65,14 +61,14 @@ export function init(userParams, context) {
     drawTiles,
 
     // Methods to set the position and zoom of the map
-    move: (dz, dx, dy) => { if (coords.move(dz, dx, dy)) grid.clear(); },
-    fitBoundingBox,
-    setCenterZoom,
+    move: grid.move,
+    fitBoundingBox: grid.fitBoundingBox,
+    setCenterZoom: grid.setCenterZoom,
 
     // Methods to convert coordinates, or report conversion parameters
-    toLocal: coords.toLocal,
-    xyToMapPixels: coords.xyToMapPixels,
-    getScale: coords.getScale,
+    toLocal: grid.toLocal,
+    xyToMapPixels: grid.xyToMapPixels,
+    getScale: grid.getScale,
 
     // Methods to interrogate or change the styling of the map
     style: () => factory.style,
@@ -94,17 +90,7 @@ export function init(userParams, context) {
   function drawTiles() {
     var updated = grid.drawTiles();
     // Clean up -- don't let images object get too big
-    numCachedTiles = tiles.prune(coords.tileDistance, 1.5);
+    numCachedTiles = tiles.prune(grid.tileDistance, 1.5);
     return updated;
-  }
-
-  function fitBoundingBox(p1, p2) {
-    var mapChanged = coords.fitBoundingBox(p1, p2);
-    if (mapChanged) grid.clear();
-  }
-
-  function setCenterZoom(center, zoom) {
-    var mapChanged = coords.setCenterZoom(center, zoom);
-    if (mapChanged) grid.clear();
   }
 }

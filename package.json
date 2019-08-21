@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^6.0.1",
+    "tile-rack": "github:jjhembd/tile-rack",
     "tilekiln": "github:jjhembd/tilekiln"
   }
 }
