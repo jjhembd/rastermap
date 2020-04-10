@@ -550,7 +550,6 @@ function prepFilter(filterObj) {
       let filters = vals.map(prepFilter);
       return (d) => filters.every( filt => !filt(d) );
     }
-    default: break; // Must be a simple filter
   }
 
   [type, key, ...vals] = filterObj;

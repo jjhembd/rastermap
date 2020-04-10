@@ -2,6 +2,9 @@
 A module to draw a simple tiled raster map on an HTML Canvas, with a 
 synchronous API.
 
+DEPRECATED: Use [tile-frame] instead.
+[tile-frame]: https://www.npmjs.com/package/tile-frame
+
 You can give rastermap a target area to map, and it will *instantly* draw
 a map on the canvas for that area. 
 

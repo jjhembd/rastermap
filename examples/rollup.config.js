@@ -1,43 +1,26 @@
+var fs = require('fs');
 import resolve from 'rollup-plugin-node-resolve';
 
-export default [{
-  input: 'raster/main.js',
-  plugins: [
-    resolve(),
-  ],
-  output: {
-    file: 'raster/main.min.js',
-    format: 'iife',
-    name: 'rasterMap'
-  }
-}, {
-  input: 'vector/main.js',
-  plugins: [
-    resolve(),
-  ],
-  output: {
-    file: 'vector/main.min.js',
-    format: 'iife',
-    name: 'vectorMap'
-  }
-}, {
-  input: 'dynamic/main.js',
-  plugins: [
-    resolve(),
-  ],
-  output: {
-    file: 'dynamic/main.min.js',
-    format: 'iife',
-    name: 'dynamic'
-  }
-}, {
-  input: 'macrostrat/main.js',
-  plugins: [
-    resolve(),
-  ],
-  output: {
-    file: 'macrostrat/main.min.js',
-    format: 'iife',
-    name: 'macrostrat'
-  }
-}];
+// Get a list of the directory names
+const dirNames = fs
+  .readdirSync('./', { withFileTypes: true })
+  .filter(d => d.isDirectory())
+  .map(d => d.name);
+
+// Function to make a rollup config object from a directory name
+function makeConfig(dir) {
+  return {
+    input: dir + '/main.js',
+    plugins: [
+      resolve(),
+    ],
+    output: {
+      file: dir + '/main.min.js',
+      format: 'iife',
+      name: 'app',
+    }
+  };
+}
+
+// Export an array of config objects
+export default dirNames.map(makeConfig);

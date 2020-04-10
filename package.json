@@ -29,11 +29,10 @@
   "author": "Jeshurun Hembd",
   "license": "MIT",
   "devDependencies": {
-    "http-server": "^0.11.1",
     "map-overlay": "github:jjhembd/map-overlay",
-    "rollup": "^1.19.4",
-    "rollup-plugin-commonjs": "^10.0.2",
-    "rollup-plugin-node-resolve": "^4.2.4",
+    "rollup": "^2.6.0",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
     "touchy": "github:jjhembd/touchy"
   },
   "dependencies": {
